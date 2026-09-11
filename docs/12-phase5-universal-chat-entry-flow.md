@@ -15,9 +15,9 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0-5.2 are code-complete and verified against the running stack on
+**Progress:** 5.0-5.3 are code-complete and verified against the running stack on
 the app branch `feature/universal-chat-entry-flow` (image rebuilt from
-`cdeb55d`). Phases 5.3-5.6 are not started.
+`1e95cf0`). Phases 5.4-5.6 are not started.
 
 ---
 
@@ -300,13 +300,23 @@ the previous exit criteria are met.
 - **Exit met:** 12-case phrase corpus passes; a parse writes nothing to MariaDB
   (only Redis, and only when a pending intent is stored).
 
-### Phase 5.3 - Permission gate ⬜
-- [ ] `chat/permissions.py`: `assert_permission(doctype, action, docname=None)`.
-- [ ] Map action -> `ptype`; unknown action -> reject.
-- [ ] Resolve records via `frappe.get_list` (permission-filtered) for lists and
-      `frappe.has_permission(doc=...)` for single docs.
-- [ ] Audit `denied` decisions.
-- **Exit:** a Support Agent cannot read HR through any phrase; denial is logged.
+### Phase 5.3 - Permission gate ✅
+- [x] `chat/permissions.py`: `check()` / `assert_permission()` / `authorize()` /
+      `resolve_record()` / `needs_confirmation()`.
+- [x] Action -> `ptype` from the registry only; unknown action rejected.
+- [x] `frappe.has_permission` meta-level, then a doc-level check passing `doc=`
+      so the app's `has_permission` hooks run; records resolved via
+      `frappe.get_list` (which applies `permission_query_conditions`).
+- [x] `delete`/`approve` stay behind the settings opt-ins; `authorize()` records
+      Allowed/Denied to `Solrise AI Audit Log`.
+- **Exit met:** a Support Agent cannot read `Leave Application` or `Employee`
+  (by phrase or directly), an unowned `Issue` is denied by the row filter, and
+  the denial is audited with user attribution.
+
+> **Bug execution exposed (fixed).** The audit DocType declared
+> `sort_field: timestamp` but never defined the field, so Frappe created no
+> column and every list query ordered by a missing column; the writer's
+> `timestamp` value was silently dropped on insert. The field is now declared.
 
 ### Phase 5.4 - Schema inspector + slot filling ⬜
 - [ ] `chat/schema.py`: `missing_required(doctype, values)` per §6.4.
