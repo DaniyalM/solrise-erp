@@ -15,6 +15,11 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
+**Progress:** 5.0 scaffold committed in the app repo on
+`feature/universal-chat-entry-flow` (`c18d743`) and pushed to the build remote.
+Runtime verification needs an image rebuild (the app lives in the image), so 5.0
+is 🟡 until then. Phases 5.1-5.6 are not started.
+
 ---
 
 ## 0. TL;DR of the design review
@@ -264,14 +269,16 @@ Add a "Universal Chat" section:
 Each phase is independently shippable and testable. Do not start a phase until
 the previous exit criteria are met.
 
-### Phase 5.0 - Scaffold & contracts ⬜
-- [ ] Create `solrise_erp/chat/` package (`__init__.py`, `registry.py`).
-- [ ] Define `ACTION_REGISTRY` (DocType -> allowed actions -> ptype) and
+### Phase 5.0 - Scaffold & contracts 🟡
+- [x] Create `solrise_erp/chat/` package (`__init__.py`, `registry.py`).
+- [x] Define `ACTION_REGISTRY` (DocType -> allowed actions -> ptype) and
       `MODULE_ALIASES` (module + aliases -> DocTypes).
-- [ ] Define the `Solrise AI Audit Log` DocType (JSON + Python stub).
-- [ ] Extend `Solrise Settings` fields + defaults.
-- [ ] Add hooks (`web_include_js`, boot payload key, `chat_allowed_doctypes`).
-- **Exit:** `bench migrate` clean; DocType visible; no behaviour change yet.
+- [x] Define the `Solrise AI Audit Log` DocType (JSON + Python stub).
+- [x] Extend `Solrise Settings` fields + defaults.
+- [x] Add the `web_include_js` hook and load the inert widget shell in Desk too.
+- **Exit (pending):** `bench migrate` clean; DocType visible; no behaviour change
+  yet. Needs `make image && make local-up && bench migrate` with
+  `SOLRISE_APP_BRANCH=feature/universal-chat-entry-flow`.
 
 ### Phase 5.1 - Context + menu ⬜
 - [ ] `chat/context.py`: user, roles, department (User Permission), timezone.
