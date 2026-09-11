@@ -15,10 +15,9 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0 scaffold committed in the app repo on
-`feature/universal-chat-entry-flow` (`c18d743`) and pushed to the build remote.
-Runtime verification needs an image rebuild (the app lives in the image), so 5.0
-is 🟡 until then. Phases 5.1-5.6 are not started.
+**Progress:** 5.0 and 5.1 are code-complete and verified against the running
+stack on the app branch `feature/universal-chat-entry-flow` (image rebuilt from
+`712ee29`). Phases 5.2-5.6 are not started.
 
 ---
 
@@ -269,23 +268,26 @@ Add a "Universal Chat" section:
 Each phase is independently shippable and testable. Do not start a phase until
 the previous exit criteria are met.
 
-### Phase 5.0 - Scaffold & contracts 🟡
+### Phase 5.0 - Scaffold & contracts ✅
 - [x] Create `solrise_erp/chat/` package (`__init__.py`, `registry.py`).
 - [x] Define `ACTION_REGISTRY` (DocType -> allowed actions -> ptype) and
       `MODULE_ALIASES` (module + aliases -> DocTypes).
 - [x] Define the `Solrise AI Audit Log` DocType (JSON + Python stub).
-- [x] Extend `Solrise Settings` fields + defaults.
+- [x] Extend `Solrise Settings` fields + defaults (backfilled idempotently by
+      `after_migrate`, since a pre-existing Single has no row for a new field).
 - [x] Add the `web_include_js` hook and load the inert widget shell in Desk too.
-- **Exit (pending):** `bench migrate` clean; DocType visible; no behaviour change
-  yet. Needs `make image && make local-up && bench migrate` with
-  `SOLRISE_APP_BRANCH=feature/universal-chat-entry-flow`.
+- **Exit met:** `bench migrate` clean and idempotent; DocType visible; default
+  audit write succeeds; both assets 200; no behaviour change.
 
-### Phase 5.1 - Context + menu ⬜
-- [ ] `chat/context.py`: user, roles, department (User Permission), timezone.
-- [ ] `chat/menu.py`: role-filtered quick actions (CRM / Tickets / HR /
-      Approvals / Knowledge Base / My Tasks / Reports / Help).
-- [ ] `boot_session` injects the same menu so the first paint is instant.
-- **Exit:** a Support Agent and an HR User see different menus; unauth call rejected.
+### Phase 5.1 - Context + menu ✅
+- [x] `chat/context.py`: user, roles, department (User Permission), timezone,
+      channel normalisation (Desk/Portal/API).
+- [x] `chat/menu.py`: quick actions built from *permissions*, not a role list
+      (CRM / Tickets / HR / Approvals / Knowledge Base / My Tasks / Reports / Help).
+- [x] `api/chat.py`: whitelisted `bootstrap()` (no `allow_guest`).
+- [x] `boot_session` injects the same menu (non-secret) so first paint is instant.
+- **Exit met:** a Support Agent sees `tickets` but not `hr`; an HR user sees `hr`
+  and `approvals` but not `tickets`; unauthenticated `bootstrap` returns 403.
 
 ### Phase 5.2 - Intent engine (deterministic) ⬜
 - [ ] `chat/intent.py`: normalize -> module -> action -> record -> urgency.
