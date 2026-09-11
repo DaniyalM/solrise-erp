@@ -18,6 +18,11 @@ Anything that touches the database must run **inside the backend container**.
 SITE_ENV=prod ./scripts/run-python.sh scripts/setup_erp.py   # against a VPS stack
 ```
 
+> `make site` (`scripts/create-site.sh`) runs `setup_erp.py` and `roles_rbac.py`
+automatically once the apps are installed, so one command leaves a fresh site
+fully configured. Both scripts are idempotent, so re-running `make site` is safe.
+Opt out with `SKIP_CONFIG=1 make site`.
+
 The scripts are self-bootstrapping, so they also work through the console:
 
 ```bash
@@ -263,13 +268,18 @@ fixtures = [
 ### b. Export and bring the files out of the container
 
 ```bash
-make fixtures                 # bench export-fixtures (inside the container)
-./scripts/pull-fixtures.sh    # tar the results into ./fixtures/<app>/fixtures/
+make fixtures                 # export inside the container + pull into ./fixtures/<app>/fixtures/
 ```
+
+`bench export-fixtures` writes to `apps/<app>/<module>/fixtures/` (the module
+folder is named after the app), **not** `apps/<app>/fixtures/`. `pull-fixtures.sh`
+resolves either layout, pulls only the apps in `FIXTURE_APPS` (default
+`solrise_erp`) so framework and test fixtures are never committed, and lands them
+in the documented `./fixtures/<app>/fixtures/` layout.
 
 `fixtures/` is committed to git. Because the apps live in the image (not a
 volume), **anything exported and not committed is lost on the next rebuild** -
-always pull and commit.
+always commit.
 
 ### c. How they re-apply on a new deployment
 
@@ -320,10 +330,15 @@ Rebuild (`make image`) and the custom app is part of the image forever.
 
 ## Exit criteria
 
-- [ ] `./scripts/run-python.sh scripts/setup_erp.py` completes with no `!` lines
-- [ ] `./scripts/run-python.sh scripts/roles_rbac.py` creates all six roles
-- [ ] A test `Leave Application` shows the "Pending Approval" workflow state
-- [ ] A new `Issue` is auto-assigned by the Assignment Rule
-- [ ] `fixtures/` contains committed JSON and reapplies after `make image`
+- [x] `./scripts/run-python.sh scripts/setup_erp.py` completes with no `!` lines
+- [x] `./scripts/run-python.sh scripts/roles_rbac.py` creates all six roles
+- [x] A test `Leave Application` shows the "Pending Approval" workflow state
+- [x] A new `Issue` is auto-assigned by the Assignment Rule (`_assign` set on insert)
+- [x] `fixtures/` contains committed JSON and reapplies after `make image`
+
+> All five were verified against the running stack on 2026-09-12 and are
+> recorded in `docs/09-execution-log.md` §9. A fresh site still needs
+> `roles_rbac.py` to run after the fixtures sync so the shipped roles preserved
+> in `Custom DocPerm` are recreated.
 
 Next: `docs/03-phase3-production-vps.md`.

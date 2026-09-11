@@ -10,4 +10,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "${ROOT_DIR}/fixtures"
 log "exporting fixtures from ${SITE_NAME} ..."
 compose exec -T backend bench --site "${SITE_NAME}" export-fixtures
-log "fixtures written under fixtures/ (copy them out with scripts/pull-fixtures.sh)"
+log "fixtures exported inside the container"

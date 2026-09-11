@@ -26,6 +26,20 @@ compose --profile init run --rm create-site
 log "installed apps:"
 compose exec -T backend bench --site "${SITE_NAME}" list-apps
 
+# Apply the programmatic configuration. Both scripts are idempotent, so this is
+# safe on a brand-new site and on every re-run of `make site`. Order matters:
+# roles_rbac.py must run *after* the fixtures sync (done during install-app /
+# migrate) so it recreates the shipped-role Custom DocPerm rows it preserves -
+# without it, the tight Solrise fixture filter would leave those roles without
+# access to the DocTypes it manages. Set SKIP_CONFIG=1 to skip both.
+if [ "${SKIP_CONFIG:-0}" = "1" ]; then
+  log "SKIP_CONFIG=1 - leaving setup_erp.py / roles_rbac.py to the operator"
+else
+  log "applying programmatic configuration (idempotent) ..."
+  "${SCRIPT_DIR}/run-python.sh" scripts/setup_erp.py
+  "${SCRIPT_DIR}/run-python.sh" scripts/roles_rbac.py
+fi
+
 log "done. Site: ${SITE_NAME}"
 if [ "${SITE_ENV}" = "local" ]; then
   log "open: http://localhost:${HTTP_PORT:-8080}"

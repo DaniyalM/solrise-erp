@@ -333,3 +333,56 @@ occurrences. What remains are module permission identifiers, documented in
 
 Also added: a Solrise SVG logo (`public/images/solrise-logo.svg`) so the
 upstream logo is replaced rather than merely hidden.
+
+---
+
+## 9. Round 5 - Phase 2 closed: fixtures actually committed
+
+The Phase 2 gap was not that the export failed - `bench export-fixtures` had run
+- but that the results never left the container. `pull-fixtures.sh` globbed
+`*/fixtures` from `apps/`, while the export lands in
+`apps/<app>/<module>/fixtures/` (the module folder is named after the app). The
+glob matched nothing, so the script "succeeded" and wrote zero files. That is why
+`fixtures/` still held only its `README.md`.
+
+**Fix.** `pull-fixtures.sh` now resolves `apps/<app>/<app>/fixtures` **or**
+`apps/<app>/fixtures`, copies only the apps named in `FIXTURE_APPS` (default
+`solrise_erp`) so framework fixtures and `frappe/cypress/fixtures` are never
+committed, and lands them in the documented `./fixtures/<app>/fixtures/` layout.
+`make fixtures` now runs export **and** pull, so the two-step that silently
+half-worked is gone.
+
+**Re-ran, idempotently** (`setup_erp.py`, `roles_rbac.py`), then exported and
+pulled. Committed under `fixtures/solrise_erp/fixtures/`:
+
+| Fixture | Rows | Fixture | Rows |
+|---|---|---|---|
+| `role.json` | 6 | `report.json` | 9 |
+| `custom_docperm.json` | 17 | `dashboard_chart.json` | 5 |
+| `workflow.json` | 4 | `dashboard.json` | 1 |
+| `workflow_state.json` | 5 | `service_level_agreement.json` | 1 |
+| `workflow_action_master.json` | 4 | `assignment_rule.json` | 1 |
+| `notification.json` | 4 | `solrise_faq.json` | 1 |
+| `custom_field` / `property_setter` / `print_format` / `solrise_notification_channel` | 0 each | | |
+
+**Verified after the change.**
+
+- `setup_erp.py` completed with no `!` lines; six roles and all 17 Solrise-owned
+  `Custom DocPerm` rows present.
+- `bench migrate` re-synced fixtures with no error and the counts held.
+- A new `Issue` was auto-assigned by *Solrise Support Routing*
+  (`_assign: ["Administrator"]`), which closes the last unverified Phase 2 exit
+  criterion. The test record was deleted afterwards.
+- Secret scan of `fixtures/` clean - `Solrise Settings` (the API key) is not a
+  fixture by design.
+
+**Caveat for a fresh site.** The fixture filter is deliberately tight (Solrise
+owns only its own records), so `custom_docperm.json` carries the six Solrise
+roles but **not** the shipped-role rows that `_prepare_doctype()` preserves
+(`Support Team`, `System Manager`, `Sales User`, `Accounts User`, ...). Once any
+`Custom DocPerm` exists for a DocType, Frappe ignores its shipped `DocPerm`, so
+`roles_rbac.py` must run *after* the fixtures sync to recreate those rows. That
+ordering is now automatic: `scripts/create-site.sh` runs `setup_erp.py` and then
+`roles_rbac.py` immediately after `bench install-app` / `migrate`. Widening the
+fixture to include framework roles would instead violate the "never overwrite
+framework records" rule in `hooks.py`.
