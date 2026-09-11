@@ -25,9 +25,16 @@ make image                 # ensure the running image matches the source
 make local-up
 ./scripts/run-python.sh scripts/setup_erp.py    # apply config
 ./scripts/run-python.sh scripts/roles_rbac.py
-make fixtures              # bench export-fixtures inside the container
-./scripts/pull-fixtures.sh # tar the JSON out into this directory
+make fixtures              # export inside the container, then pull into this directory
 git add fixtures && git commit -m "chore: refresh fixtures"
+```
+
+Only the apps named in `FIXTURE_APPS` (default `solrise_erp`) are pulled, so
+framework and test fixtures never land here. Override when you add a second
+custom app:
+
+```bash
+FIXTURE_APPS="solrise_erp another_app" ./scripts/pull-fixtures.sh
 ```
 
 ## Why this directory is committed

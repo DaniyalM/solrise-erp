@@ -1,0 +1,115 @@
+[
+ {
+  "apply_sla_for_resolution": 1,
+  "condition": null,
+  "default_priority": "Medium",
+  "default_service_level_agreement": 1,
+  "docstatus": 0,
+  "doctype": "Service Level Agreement",
+  "document_type": "Issue",
+  "enabled": 1,
+  "end_date": null,
+  "entity": null,
+  "entity_type": "",
+  "holiday_list": "Solrise Default Holidays",
+  "modified": "2026-09-11 18:49:02.294400",
+  "name": "SLA-Issue-Standard",
+  "pause_sla_on": [],
+  "priorities": [
+   {
+    "default_priority": 0,
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "priorities",
+    "parenttype": "Service Level Agreement",
+    "priority": "Urgent",
+    "resolution_time": 14400.0,
+    "response_time": 1800.0
+   },
+   {
+    "default_priority": 0,
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "priorities",
+    "parenttype": "Service Level Agreement",
+    "priority": "High",
+    "resolution_time": 28800.0,
+    "response_time": 3600.0
+   },
+   {
+    "default_priority": 1,
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "priorities",
+    "parenttype": "Service Level Agreement",
+    "priority": "Medium",
+    "resolution_time": 86400.0,
+    "response_time": 14400.0
+   },
+   {
+    "default_priority": 0,
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "priorities",
+    "parenttype": "Service Level Agreement",
+    "priority": "Low",
+    "resolution_time": 172800.0,
+    "response_time": 28800.0
+   }
+  ],
+  "service_level": "Standard",
+  "sla_fulfilled_on": [
+   {
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "sla_fulfilled_on",
+    "parenttype": "Service Level Agreement",
+    "status": "Resolved"
+   },
+   {
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "sla_fulfilled_on",
+    "parenttype": "Service Level Agreement",
+    "status": "Closed"
+   }
+  ],
+  "start_date": "2026-09-11",
+  "support_and_resolution": [
+   {
+    "end_time": "18:00:00",
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "support_and_resolution",
+    "parenttype": "Service Level Agreement",
+    "start_time": "9:00:00",
+    "workday": "Monday"
+   },
+   {
+    "end_time": "18:00:00",
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "support_and_resolution",
+    "parenttype": "Service Level Agreement",
+    "start_time": "9:00:00",
+    "workday": "Tuesday"
+   },
+   {
+    "end_time": "18:00:00",
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "support_and_resolution",
+    "parenttype": "Service Level Agreement",
+    "start_time": "9:00:00",
+    "workday": "Wednesday"
+   },
+   {
+    "end_time": "18:00:00",
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "support_and_resolution",
+    "parenttype": "Service Level Agreement",
+    "start_time": "9:00:00",
+    "workday": "Thursday"
+   },
+   {
+    "end_time": "18:00:00",
+    "parent": "SLA-Issue-Standard",
+    "parentfield": "support_and_resolution",
+    "parenttype": "Service Level Agreement",
+    "start_time": "9:00:00",
+    "workday": "Friday"
+   }
+  ]
+ }
+]

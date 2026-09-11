@@ -1,0 +1,51 @@
+[
+ {
+  "cards": [],
+  "chart_options": null,
+  "charts": [
+   {
+    "chart": "Solrise Open Tickets by Status",
+    "parent": "Solrise Operations",
+    "parentfield": "charts",
+    "parenttype": "Dashboard",
+    "width": "Half"
+   },
+   {
+    "chart": "Solrise Ticket Trend",
+    "parent": "Solrise Operations",
+    "parentfield": "charts",
+    "parenttype": "Dashboard",
+    "width": "Half"
+   },
+   {
+    "chart": "Solrise Pipeline by Status",
+    "parent": "Solrise Operations",
+    "parentfield": "charts",
+    "parenttype": "Dashboard",
+    "width": "Half"
+   },
+   {
+    "chart": "Solrise Headcount by Department",
+    "parent": "Solrise Operations",
+    "parentfield": "charts",
+    "parenttype": "Dashboard",
+    "width": "Half"
+   },
+   {
+    "chart": "Solrise Assistant Turns",
+    "parent": "Solrise Operations",
+    "parentfield": "charts",
+    "parenttype": "Dashboard",
+    "width": "Full"
+   }
+  ],
+  "dashboard_name": "Solrise Operations",
+  "docstatus": 0,
+  "doctype": "Dashboard",
+  "is_default": 0,
+  "is_standard": 0,
+  "modified": "2026-09-11 18:51:16.206850",
+  "module": "Solrise ERP",
+  "name": "Solrise Operations"
+ }
+]

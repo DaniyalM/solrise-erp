@@ -1,0 +1,641 @@
+[
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.549885",
+  "module": "CRM",
+  "name": "Solrise CRM Pipeline",
+  "prepared_report": 0,
+  "query": "select\n  o.status as \"Status:Data:160\",\n  count(*) as \"Opportunities:Int:130\",\n  coalesce(sum(o.opportunity_amount), 0) as \"Pipeline Value:Currency:160\",\n  round(avg(o.probability), 1) as \"Avg Probability:Float:130\"\nfrom `tabOpportunity` o\nwhere o.status not in ('Lost', 'Closed')\ngroup by o.status\norder by count(*) desc",
+  "ref_doctype": "Opportunity",
+  "reference_report": null,
+  "report_name": "Solrise CRM Pipeline",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise CRM Pipeline",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.672405",
+  "module": "Support",
+  "name": "Solrise Ticket SLA",
+  "prepared_report": 0,
+  "query": "select\n  coalesce(i.agreement_status, 'Not Applicable') as \"SLA Status:Data:180\",\n  count(*) as \"Tickets:Int:100\",\n  sum(case when i.response_by is not null\n            and i.response_by < now()\n            and i.status not in ('Closed', 'Resolved')\n           then 1 else 0 end) as \"Breached:Int:100\"\nfrom `tabIssue` i\ngroup by coalesce(i.agreement_status, 'Not Applicable')\norder by count(*) desc",
+  "ref_doctype": "Issue",
+  "reference_report": null,
+  "report_name": "Solrise Ticket SLA",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Ticket SLA",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.699522",
+  "module": "Support",
+  "name": "Solrise Agent Performance",
+  "prepared_report": 0,
+  "query": "select\n  coalesce(i.owner, 'unassigned@example.com') as \"Owner:Link/User:220\",\n  count(*) as \"Total:Int:90\",\n  sum(case when i.status in ('Closed', 'Resolved') then 1 else 0 end) as \"Closed:Int:90\",\n  sum(case when i.status not in ('Closed', 'Resolved') then 1 else 0 end) as \"Open:Int:90\",\n  round(avg(timestampdiff(hour, i.creation, now())), 1) as \"Avg Age (h):Float:120\"\nfrom `tabIssue` i\ngroup by i.owner\norder by count(*) desc",
+  "ref_doctype": "Issue",
+  "reference_report": null,
+  "report_name": "Solrise Agent Performance",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Agent Performance",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.731489",
+  "module": "Support",
+  "name": "Solrise Workload",
+  "prepared_report": 0,
+  "query": "select\n  i.owner as \"Owner:Link/User:220\",\n  sum(case when i.status = 'Open' then 1 else 0 end) as \"Open:Int:90\",\n  sum(case when i.priority in ('Urgent', 'High') then 1 else 0 end) as \"High Priority:Int:130\",\n  sum(case when i._assign is null or i._assign = '' or i._assign = '[]'\n           then 1 else 0 end) as \"Unassigned:Int:120\"\nfrom `tabIssue` i\ngroup by i.owner\norder by sum(case when i.status = 'Open' then 1 else 0 end) desc",
+  "ref_doctype": "Issue",
+  "reference_report": null,
+  "report_name": "Solrise Workload",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Workload",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.762832",
+  "module": "Setup",
+  "name": "Solrise HR Headcount",
+  "prepared_report": 0,
+  "query": "select\n  coalesce(e.department, 'Unassigned') as \"Department:Link/Department:220\",\n  coalesce(e.employment_type, '-') as \"Employment Type:Data:160\",\n  count(*) as \"Active Employees:Int:140\"\nfrom `tabEmployee` e\nwhere e.status = 'Active'\ngroup by e.department, e.employment_type\norder by count(*) desc",
+  "ref_doctype": "Employee",
+  "reference_report": null,
+  "report_name": "Solrise HR Headcount",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise HR Headcount",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.792176",
+  "module": "HR",
+  "name": "Solrise Approval Backlog",
+  "prepared_report": 0,
+  "query": "select\n  coalesce(l.workflow_state, l.status) as \"State:Data:180\",\n  count(*) as \"Applications:Int:130\"\nfrom `tabLeave Application` l\ngroup by coalesce(l.workflow_state, l.status)\norder by count(*) desc",
+  "ref_doctype": "Leave Application",
+  "reference_report": null,
+  "report_name": "Solrise Approval Backlog",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Approval Backlog",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.816594",
+  "module": "Solrise ERP",
+  "name": "Solrise Assistant Usage",
+  "prepared_report": 0,
+  "query": "select\n  date(l.creation) as \"Date:Date:120\",\n  l.role as \"Role:Data:110\",\n  count(*) as \"Turns:Int:100\",\n  coalesce(sum(l.tokens_used), 0) as \"Tokens:Int:120\",\n  round(avg(coalesce(l.latency_ms, 0)), 0) as \"Avg Latency (ms):Int:150\"\nfrom `tabSolrise Chat Log` l\ngroup by date(l.creation), l.role\norder by date(l.creation) desc",
+  "ref_doctype": "Solrise Chat Log",
+  "reference_report": null,
+  "report_name": "Solrise Assistant Usage",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Assistant Usage",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.842221",
+  "module": "Solrise ERP",
+  "name": "Solrise Message Delivery",
+  "prepared_report": 0,
+  "query": "select\n  m.channel_type as \"Channel:Data:140\",\n  m.status as \"Status:Data:120\",\n  count(*) as \"Messages:Int:110\",\n  max(m.creation) as \"Last:Datetime:180\"\nfrom `tabSolrise Message Log` m\ngroup by m.channel_type, m.status\norder by count(*) desc",
+  "ref_doctype": "Solrise Message Log",
+  "reference_report": null,
+  "report_name": "Solrise Message Delivery",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Message Delivery",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-09-11 18:51:15.864813",
+  "module": "Core",
+  "name": "Solrise Audit Trail",
+  "prepared_report": 0,
+  "query": "select\n  a.user as \"User:Link/User:220\",\n  a.operation as \"Operation:Data:150\",\n  count(*) as \"Events:Int:100\",\n  max(a.creation) as \"Last:Datetime:180\"\nfrom `tabActivity Log` a\nwhere a.creation >= date_sub(now(), interval 30 day)\ngroup by a.user, a.operation\norder by count(*) desc",
+  "ref_doctype": "Activity Log",
+  "reference_report": null,
+  "report_name": "Solrise Audit Trail",
+  "report_script": null,
+  "report_type": "Query Report",
+  "roles": [
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Manager"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Support Agent"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM Manager"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "CRM User"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "HR Manager"
+   },
+   {
+    "parent": "Solrise Audit Trail",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Finance Approver"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ }
+]

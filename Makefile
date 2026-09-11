@@ -11,7 +11,7 @@ COMPOSE_CMD ?= podman-compose
 export
 
 .PHONY: help image local-up local-down init site logs ps shell \
-        prod-up prod-down prod-logs backup restore fixtures
+        prod-up prod-down prod-logs backup restore fixtures pull-fixtures
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -55,5 +55,9 @@ backup: ## Dump DB + files and copy them to $(BACKUP_DIR)
 restore: ## Restore from $(BACKUP_DIR) (see scripts/restore.sh usage)
 	./scripts/restore.sh
 
-fixtures: ## Export Custom Field / Workflow / Property Setter fixtures
+fixtures: ## Export fixtures inside the container and pull them into ./fixtures
 	./scripts/export-fixtures.sh
+	./scripts/pull-fixtures.sh
+
+pull-fixtures: ## Pull already-exported fixtures out of the container
+	./scripts/pull-fixtures.sh

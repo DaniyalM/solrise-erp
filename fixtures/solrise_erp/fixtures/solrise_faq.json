@@ -1,0 +1,14 @@
+[
+ {
+  "answer": "<p>Open the login page, click <b>Forgot password</b>, and follow the emailed link. If no mail arrives, contact your administrator.</p>",
+  "category": "General",
+  "docstatus": 0,
+  "doctype": "Solrise FAQ",
+  "enabled": 1,
+  "keywords": "password, reset, forgot, login",
+  "modified": "2026-09-11 16:53:56.197373",
+  "name": "How do I reset my password?",
+  "question": "How do I reset my password?",
+  "times_matched": 0
+ }
+]

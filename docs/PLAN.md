@@ -37,7 +37,7 @@ Stage 4 work belongs in a custom app (see `docs/02-phase2-module-config.md`).
 | M2 | Local stack healthy (db, redis x2, backend, ws, queues, scheduler, frontend) | 1 | ✅ | `make ps` all `Up`; no crash loops in logs |
 | M3 | Site created, apps installed, desk reachable | 1 | ✅ | `bench list-apps` shows erpnext, hrms; `http://localhost:8080` returns the login page |
 | M4 | Base module settings applied | 2 | ✅ | `setup_erp.py` runs clean and is re-run safe |
-| M5 | Roles + RBAC live and exported | 2 | 🟡 | Roles exist; Custom DocPerm fixtures committed |
+| M5 | Roles + RBAC live and exported | 2 | ✅ | Roles exist; Custom DocPerm fixtures committed |
 | M6 | Approvals + SLA + assignment rules operational | 2 | ✅ | Workflow triggers on a test record; Issue auto-assigns |
 | M7 | Production stack up with valid TLS | 3 | ⬜ | `https://erp.<domain>` serves a trusted certificate |
 | M8 | Backup/restore drilled end to end | 3 | ⬜ | Local dump -> SCP -> restore on VPS verified |
@@ -49,7 +49,8 @@ Update the **Status** column as you go - this table is the single source of trut
 > Stages 1-2 and the Stage 4 code paths have now been **executed**; see
 > `docs/09-execution-log.md` for the evidence and the bugs that run exposed.
 > ✅ = verified running, 🟡 = code executed but not production-verified,
-> ⬜ = not executed. M5/M6 are 🟡 only because fixtures/CI export is pending.
+> ⬜ = not executed. M5 was 🟡 only because the fixtures were pending; they are
+> now exported and committed (see `docs/09-execution-log.md` §9).
 
 ---
 
@@ -71,11 +72,11 @@ Update the **Status** column as you go - this table is the single source of trut
 - [ ] Verify desk, websocket, scheduler, logs
 - **Exit:** M1-M3. See `docs/01-phase1-local-podman.md`.
 
-### Phase 2 - Programmatic configuration 🟡
-- [ ] `setup_erp.py` (HR, Selling/Buying, CRM, Support, Leave Types, SLA, Assignment Rule)
-- [ ] `roles_rbac.py` (custom roles + Custom DocPerm)
-- [ ] Workflows, Notifications, print/letterhead templates
-- [ ] Export fixtures; commit them for redeploy
+### Phase 2 - Programmatic configuration ✅
+- [x] `setup_erp.py` (HR, Selling/Buying, CRM, Support, Leave Types, SLA, Assignment Rule)
+- [x] `roles_rbac.py` (custom roles + Custom DocPerm)
+- [x] Workflows, Notifications, print/letterhead templates
+- [x] Export fixtures; commit them for redeploy (`make fixtures`)
 - **Exit:** M4-M6. See `docs/02-phase2-module-config.md`.
 
 ### Phase 3 - Production VPS ⬜

@@ -1,0 +1,62 @@
+[
+ {
+  "assign_condition": "status == 'Open'",
+  "assignment_days": [
+   {
+    "day": "Monday",
+    "parent": "Solrise Support Routing",
+    "parentfield": "assignment_days",
+    "parenttype": "Assignment Rule"
+   },
+   {
+    "day": "Tuesday",
+    "parent": "Solrise Support Routing",
+    "parentfield": "assignment_days",
+    "parenttype": "Assignment Rule"
+   },
+   {
+    "day": "Wednesday",
+    "parent": "Solrise Support Routing",
+    "parentfield": "assignment_days",
+    "parenttype": "Assignment Rule"
+   },
+   {
+    "day": "Thursday",
+    "parent": "Solrise Support Routing",
+    "parentfield": "assignment_days",
+    "parenttype": "Assignment Rule"
+   },
+   {
+    "day": "Friday",
+    "parent": "Solrise Support Routing",
+    "parentfield": "assignment_days",
+    "parenttype": "Assignment Rule"
+   }
+  ],
+  "close_condition": "status == 'Closed'",
+  "current_index": 0,
+  "description": "Automatic Assignment",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Assignment Rule",
+  "document_type": "Issue",
+  "due_date_based_on": null,
+  "field": null,
+  "last_user": "Administrator",
+  "modified": "2026-09-11 18:51:36.122699",
+  "name": "Solrise Support Routing",
+  "priority": 0,
+  "rule": "Round Robin",
+  "unassign_condition": "status in ('Resolved', 'Closed')",
+  "users": [
+   {
+    "parent": "Solrise Support Routing",
+    "parentfield": "users",
+    "parenttype": "Assignment Rule",
+    "user": "Administrator",
+    "weight": 1
+   }
+  ],
+  "weighted_users": []
+ }
+]
