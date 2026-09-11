@@ -15,9 +15,9 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0 and 5.1 are code-complete and verified against the running
-stack on the app branch `feature/universal-chat-entry-flow` (image rebuilt from
-`712ee29`). Phases 5.2-5.6 are not started.
+**Progress:** 5.0-5.2 are code-complete and verified against the running stack on
+the app branch `feature/universal-chat-entry-flow` (image rebuilt from
+`cdeb55d`). Phases 5.3-5.6 are not started.
 
 ---
 
@@ -289,13 +289,16 @@ the previous exit criteria are met.
 - **Exit met:** a Support Agent sees `tickets` but not `hr`; an HR user sees `hr`
   and `approvals` but not `tickets`; unauthenticated `bootstrap` returns 403.
 
-### Phase 5.2 - Intent engine (deterministic) ⬜
-- [ ] `chat/intent.py`: normalize -> module -> action -> record -> urgency.
-- [ ] Regex extractors for DocType naming series (`ISS-\d+`, `HR-EMP-\d+`, ...)
-      derived from `DocType.autoname` / `naming_rule`.
-- [ ] Confidence score; unknown/low-confidence returns a clarification prompt.
-- [ ] Redis pending-intent store keyed by `session_id` (TTL, e.g. 15 min).
-- **Exit:** unit tests over a phrase corpus; no DB writes for a parse-only call.
+### Phase 5.2 - Intent engine (deterministic) ✅
+- [x] `chat/nlp.py`: pure parser - normalize, verb -> action, module aliases,
+      DocType synonyms, urgency, confidence, quick-action handling.
+- [x] Naming-series extractors derived from real DocType metadata
+      (`ISS-`, `CRM-LEAD-`, `HR-LAP-`, `HR-EMP-`, ...), via `intent.prefixes()`.
+- [x] Confidence score; unknown/low-confidence returns a clarification prompt.
+- [x] Redis pending-intent store (`solrise_chat_pending:<session>`, 15 min TTL),
+      merged with structured answers on the next turn.
+- **Exit met:** 12-case phrase corpus passes; a parse writes nothing to MariaDB
+  (only Redis, and only when a pending intent is stored).
 
 ### Phase 5.3 - Permission gate ⬜
 - [ ] `chat/permissions.py`: `assert_permission(doctype, action, docname=None)`.
@@ -337,16 +340,18 @@ the previous exit criteria are met.
 apps/solrise_erp/solrise_erp/
 ├── chat/
 │   ├── __init__.py
-│   ├── registry.py       # ACTION_REGISTRY, MODULE_ALIASES
+│   ├── registry.py       # ACTION_REGISTRY, MODULE_ALIASES, synonyms, verbs
+│   ├── nlp.py            # pure parser (no Frappe import; unit-testable)
 │   ├── context.py        # identity + roles + department + user perms
 │   ├── menu.py           # quick-action menu (role filtered)
-│   ├── intent.py         # deterministic parse + LLM slot-fill fallback
+│   ├── intent.py         # prefixes from meta, finalisation, pending state
 │   ├── permissions.py    # permission gate
 │   ├── schema.py         # get_meta required-field inspector + validation
 │   ├── executor.py       # DocType operations
 │   ├── workflow.py       # approval transitions
 │   └── audit.py          # Solrise AI Audit Log writer
 ├── api/chat.py           # whitelisted HTTP surface
+├── tests/test_chat_nlp.py# phrase corpus (runs standalone)
 └── public/js/solrise_chat.js
 ```
 
