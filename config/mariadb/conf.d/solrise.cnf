@@ -1,0 +1,24 @@
+# Solrise ERP - MariaDB tuning for a small/medium single-VPS deployment.
+# Mounted read-only at /etc/mysql/conf.d/solrise.cnf in compose.prod.yaml.
+#
+# Size the buffer pool to ~50-60% of VPS RAM. The value below assumes 4 GB.
+#   ramsize   -> innodb_buffer_pool_size
+#   2 GB      -> 1G
+#   4 GB      -> 2G
+#   8 GB      -> 4G
+[mysqld]
+innodb_buffer_pool_size         = 2G
+innodb_log_file_size            = 512M
+innodb_flush_method             = O_DIRECT
+innodb_flush_log_at_trx_commit  = 2
+innodb_file_per_table           = 1
+max_connections                 = 200
+table_open_cache                = 2000
+tmp_table_size                  = 64M
+max_heap_table_size             = 64M
+character-set-server            = utf8mb4
+collation-server                = utf8mb4_unicode_ci
+skip-name-resolve
+
+[client]
+default-character-set = utf8mb4

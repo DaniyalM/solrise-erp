@@ -1,0 +1,31 @@
+# Traefik dynamic configuration (loaded by the file provider).
+# Routers/services are declared on the frontend service via Docker labels;
+# this file carries only cross-cutting middleware and TLS defaults.
+http:
+  middlewares:
+    # Compress text responses. Frappe already gzips assets, but this covers
+    # API/REST payloads that are not pre-compressed.
+    solrise-compress:
+      compress: {}
+    # Guard against slow-loris style clients on the public endpoints.
+    solrise-ratelimit:
+      rateLimit:
+        average: 100
+        burst: 50
+  serversTransports:
+    solrise-upstream:
+      forwardingTimeouts:
+        dialTimeout: 30s
+        responseHeaderTimeout: 120s
+        idleConnTimeout: 90s
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: true
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384

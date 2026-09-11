@@ -1,0 +1,5 @@
+[
+  { "url": "https://github.com/frappe/erpnext", "branch": "version-15" },
+  { "url": "https://github.com/frappe/hrms",    "branch": "version-15" },
+  { "url": "${SOLRISE_APP_URL}",                "branch": "${SOLRISE_APP_BRANCH}" }
+]

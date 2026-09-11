@@ -1,0 +1,27 @@
+# Secrets - never commit
+.env
+.env.*
+!.env.example
+
+# Vendored frappe_docker checkout
+frappe_docker/
+
+# Local/runtime data
+sites/
+logs/
+backups/
+compose/compose.rendered.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Custom app - maintained in its own repository (see apps.json / SOLRISE_APP_URL)
+apps/solrise_erp/
