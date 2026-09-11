@@ -380,7 +380,9 @@ pulled. Committed under `fixtures/solrise_erp/fixtures/`:
 owns only its own records), so `custom_docperm.json` carries the six Solrise
 roles but **not** the shipped-role rows that `_prepare_doctype()` preserves
 (`Support Team`, `System Manager`, `Sales User`, `Accounts User`, ...). Once any
-`Custom DocPerm` exists for a DocType, Frappe ignores its shipped `DocPerm`, so a
-fresh deploy must still run `roles_rbac.py` after the fixtures sync to recreate
-those rows. The alternative - exporting framework roles - would violate the
-"never overwrite framework records" rule in `hooks.py`.
+`Custom DocPerm` exists for a DocType, Frappe ignores its shipped `DocPerm`, so
+`roles_rbac.py` must run *after* the fixtures sync to recreate those rows. That
+ordering is now automatic: `scripts/create-site.sh` runs `setup_erp.py` and then
+`roles_rbac.py` immediately after `bench install-app` / `migrate`. Widening the
+fixture to include framework roles would instead violate the "never overwrite
+framework records" rule in `hooks.py`.

@@ -18,6 +18,11 @@ Anything that touches the database must run **inside the backend container**.
 SITE_ENV=prod ./scripts/run-python.sh scripts/setup_erp.py   # against a VPS stack
 ```
 
+> `make site` (`scripts/create-site.sh`) runs `setup_erp.py` and `roles_rbac.py`
+automatically once the apps are installed, so one command leaves a fresh site
+fully configured. Both scripts are idempotent, so re-running `make site` is safe.
+Opt out with `SKIP_CONFIG=1 make site`.
+
 The scripts are self-bootstrapping, so they also work through the console:
 
 ```bash
