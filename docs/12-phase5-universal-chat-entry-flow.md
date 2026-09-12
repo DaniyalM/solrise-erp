@@ -15,9 +15,9 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0-5.3 are code-complete and verified against the running stack on
+**Progress:** 5.0-5.4 are code-complete and verified against the running stack on
 the app branch `feature/universal-chat-entry-flow` (image rebuilt from
-`1e95cf0`). Phases 5.4-5.6 are not started.
+`5a387c9`). Phases 5.5-5.6 are not started.
 
 ---
 
@@ -318,12 +318,21 @@ the previous exit criteria are met.
 > column and every list query ordered by a missing column; the writer's
 > `timestamp` value was silently dropped on insert. The field is now declared.
 
-### Phase 5.4 - Schema inspector + slot filling ⬜
-- [ ] `chat/schema.py`: `missing_required(doctype, values)` per §6.4.
-- [ ] Conversational prompt generator (one field at a time, ordered).
-- [ ] Validation of each answer against `df.fieldtype` / Link existence.
-- **Exit:** creating a ticket with a blank description prompts for it; a Link
-      answer that does not exist is rejected without a traceback.
+### Phase 5.4 - Schema inspector + slot filling ✅
+- [x] `chat/schema.py`: `missing_required(doctype, values)`.
+- [x] `prompt()` / `next_question()`: one answerable question per field, in
+      form order.
+- [x] `validate_value()`: Select options, Link / Dynamic Link existence, numeric
+      and date parsing - returns an error rather than raising.
+- **Exit met:** a record missing mandatory fields prompts for them one at a time,
+  and a bad Link/Select/Date answer is rejected without a traceback.
+
+> **Correction to the requirement.** The sketch assumed a blank `Issue.description`
+> would be prompted for, but `Issue` has exactly one mandatory field (`subject`) -
+> `description` is optional. The inspector follows the real metadata. `Customer`
+> (only `customer_name`) and `Leave Application` (`employee`, `leave_type`,
+> `from_date`, `to_date`) confirm it skips fields Frappe fills itself (`status`,
+> `posting_date`, `company`, `naming_series`).
 
 ### Phase 5.5 - Executor + workflow bridge ⬜
 - [ ] `chat/executor.py`: read/list/create/update (+ submit/cancel/approve behind flags).
@@ -721,15 +730,15 @@ def _condition_met(expression, values):
     """Evaluate a server-defined `mandatory_depends_on` / `depends_on` expression.
 
     Only expressions authored in DocType metadata reach this function - never
-    user text. We use Frappe's own evaluator so semantics match the Desk. If the
-    expression cannot be evaluated we fail *closed* (treat it as required), which
+    user text. Uses frappe.safe_eval, the same restricted evaluator Assignment
+    Rules use (there is no server-side depends_on evaluator in Frappe). If the
+    expression cannot be evaluated we fail *closed* (treat it as met), which
     errs toward asking one extra question rather than submitting bad data.
     """
     if not expression:
         return True
     try:
-        from frappe.utils.evaluator import evaluate  # Frappe's depends_on evaluator
-        return bool(evaluate(expression, values or {}))
+        return bool(frappe.safe_eval(expression, None, dict(values or {})))
     except Exception:
         return True
 
