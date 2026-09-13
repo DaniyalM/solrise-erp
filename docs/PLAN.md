@@ -6,7 +6,7 @@ identically on rootless Podman locally and on any Ubuntu VPS.
 
 **Status legend:** ✅ done · 🟡 in progress · ⬜ pending · ⛔ blocked
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-13
 
 ---
 
@@ -17,7 +17,7 @@ identically on rootless Podman locally and on any Ubuntu VPS.
 | 1 | CRM | Solrise `crm` | Leads, Opportunities, Quotations, Contacts, Notes |
 | 2 | Ticketing / Service Desk | Solrise `support` | Issue, SLA, Assignment Rule, Escalation |
 | 3 | HR (HRMS) | `hrms` app | Employee, Leave, Attendance, Payroll inputs |
-| 4 | Chat / Virtual Assistant | Custom (Stage 4) | LLM responder + NL navigation over Frappe REST |
+| 4 | Chat / Virtual Assistant | Custom (Stages 4-5) | LLM responder (Stage 4) + transactional chat entry flow (Phase 5) |
 | 5 | Workflow & Approvals | Solrise `Workflow` | Manager/HR/Finance steps + escalation |
 | 6 | Notifications | Solrise `Notification` + channel apps | Email, in-app, SMS/WhatsApp |
 | 7 | Reporting & Analytics | Solrise reports + custom Query/Dashboard | Pipeline, SLA, HR metrics |
@@ -43,6 +43,7 @@ Stage 4 work belongs in a custom app (see `docs/02-phase2-module-config.md`).
 | M8 | Backup/restore drilled end to end | 3 | ⬜ | Local dump -> SCP -> restore on VPS verified |
 | M9 | Notifications wired (email + at least one messaging channel) | 4 | 🟡 | SLA alert arrives; approval mail delivers |
 | M10 | Reporting + assistant + audit hardening | 4 | ✅ | Dashboards populated; assistant answers a record lookup |
+| M11 | Universal Chat Entry Flow (Desk + Portal) | 5 | ✅ | `turn()` creates/approves as the user; denials audited; widget assets serve 200 |
 
 Update the **Status** column as you go - this table is the single source of truth.
 
@@ -98,6 +99,17 @@ Update the **Status** column as you go - this table is the single source of trut
 - [ ] **Execution:** deploy, configure providers, verify end to end
 - **Exit:** M9-M10. See `docs/06`, `docs/07`; run `docs/08-execution-checklist.md`.
 
+### Phase 5 - Universal Chat Entry Flow ✅
+- [x] Closed vocabulary, audit store, Settings controls (`chat/registry.py`, DocType `Solrise AI Audit Log`)
+- [x] Session context + permission-filtered quick-action menu (`chat/context.py`, `chat/menu.py`)
+- [x] Deterministic intent engine + Redis pending-intent state (`chat/nlp.py`, `chat/intent.py`)
+- [x] Permission gate with Allowed/Denied auditing (`chat/permissions.py`)
+- [x] `get_meta()` schema inspector + conversational slot filling (`chat/schema.py`)
+- [x] Executor + workflow bridge + `api.chat.turn` (`chat/executor.py`, `chat/workflow.py`)
+- [x] Desk + Portal widget + hardening (`public/js/solrise_chat.js`)
+- [ ] **Execution:** human walkthrough of the widget on Desk and Portal
+- **Exit:** M11. See `docs/12-phase5-universal-chat-entry-flow.md`.
+
 ---
 
 ## 4. Repository map
@@ -128,7 +140,7 @@ Update the **Status** column as you go - this table is the single source of trut
 │   ├── restore.sh          # restore onto any stack/VPS
 │   └── bootstrap-vps.sh    # Ubuntu host preparation
 ├── fixtures/               # committed exports (durable config)
-└── docs/                   # PLAN + 01..10 guides, runbook, checklist, execution log, branding
+└── docs/                   # PLAN + 01..12 guides, runbook, checklist, execution log, branding
 ```
 
 ---
