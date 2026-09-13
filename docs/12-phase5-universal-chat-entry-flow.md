@@ -15,9 +15,10 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0-5.4 are code-complete and verified against the running stack on
+**Progress:** 5.0-5.5 are code-complete and verified against the running stack on
 the app branch `feature/universal-chat-entry-flow` (image rebuilt from
-`5a387c9`). Phases 5.5-5.6 are not started.
+`824501a`). Phase 5.6 is not started. The transactional `turn()` endpoint is live;
+only the Desk/Portal widget remains.
 
 ---
 
@@ -334,12 +335,26 @@ the previous exit criteria are met.
 > `from_date`, `to_date`) confirm it skips fields Frappe fills itself (`status`,
 > `posting_date`, `company`, `naming_series`).
 
-### Phase 5.5 - Executor + workflow bridge ⬜
-- [ ] `chat/executor.py`: read/list/create/update (+ submit/cancel/approve behind flags).
-- [ ] `chat/workflow.py`: `get_transitions` -> `apply_workflow` for approvals.
-- [ ] Human-readable confirmation + action links ("View Ticket").
-- [ ] Confirmation turn for destructive/state-changing actions.
-- **Exit:** end-to-end create + approve with correct permission failures.
+### Phase 5.5 - Executor + workflow bridge ✅
+- [x] `chat/executor.py`: read/list (via `frappe.get_list`), create, update,
+      submit, cancel, delete - each re-checked by Frappe's own ORM call.
+- [x] `chat/workflow.py`: `get_transitions` -> `apply_workflow`; no available
+      transition raises `PermissionError`.
+- [x] `api/chat.py`: `turn()` stitches resolve -> audit -> allowlist -> gate ->
+      field validation -> slot filling -> confirmation -> execute -> audit.
+- [x] Human-readable confirmations and action links; a confirmation turn for
+      every state transition / deletion.
+- **Exit met:** create + read + update + confirm/delete, a Support Agent denied,
+  and a Leave Application created across four prompts then approved to
+  `Approved`/docstatus 1.
+
+> **Two issues execution exposed (fixed).** (1) `approve` and `reject` share the
+> chat action `approve`, so the specific transition was being lost - the parser
+> now captures it via `TRANSITION_WORDS` and carries it through the pending
+> intent. (2) `frappe.cache().get_value` memoises per request and `set_value`
+> does not refresh it, so a second turn in the same process read the *previous*
+> pending intent; `remember_pending` now drops the memo first. (Production turns
+> are separate requests, so this only bit the console and tests.)
 
 ### Phase 5.6 - Widgets (Desk + Portal) + hardening ⬜
 - [ ] `public/js/solrise_chat.js` shared by both surfaces; `.text()` rendering only.
