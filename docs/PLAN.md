@@ -40,7 +40,7 @@ Stage 4 work belongs in a custom app (see `docs/02-phase2-module-config.md`).
 | M5 | Roles + RBAC live and exported | 2 | ✅ | Roles exist; Custom DocPerm fixtures committed |
 | M6 | Approvals + SLA + assignment rules operational | 2 | ✅ | Workflow triggers on a test record; Issue auto-assigns |
 | M7 | Production stack up with valid TLS | 3 | ⬜ | `https://erp.<domain>` serves a trusted certificate |
-| M8 | Backup/restore drilled end to end | 3 | ⬜ | Local dump -> SCP -> restore on VPS verified |
+| M8 | Backup/restore drilled | 3 | 🟡 | Dump -> restore verified locally; SCP -> VPS pending a host |
 | M9 | Notifications wired (email + at least one messaging channel) | 4 | 🟡 | SLA alert arrives; approval mail delivers |
 | M10 | Reporting + assistant + audit hardening | 4 | ✅ | Dashboards populated; assistant answers a record lookup |
 | M11 | Universal Chat Entry Flow (Desk + Portal) | 5 | ✅ | `turn()` creates/approves as the user; denials audited; widget assets serve 200 |
@@ -80,13 +80,14 @@ Update the **Status** column as you go - this table is the single source of trut
 - [x] Export fixtures; commit them for redeploy (`make fixtures`)
 - **Exit:** M4-M6. See `docs/02-phase2-module-config.md`.
 
-### Phase 3 - Production VPS ⬜
-- [ ] Bootstrap host (`scripts/bootstrap-vps.sh`)
+### Phase 3 - Production VPS 🟡
+- [ ] Bootstrap host (`scripts/bootstrap-vps.sh`) - passes `bash -n`; not run (no VPS)
 - [ ] DNS + production `.env` (domain, ports 80/443, secrets)
-- [ ] Traefik + Let's Encrypt; named volumes
-- [ ] Migrate data local -> VPS
+- [ ] Traefik + Let's Encrypt; named volumes - prod compose renders with its labels
+- [x] Backup/restore rehearsed locally (`make backup` -> `scripts/restore.sh`)
+- [ ] Migrate data local -> VPS (the SCP hop needs a host)
 - [ ] Firewall, unattended upgrades, audit log review
-- **Exit:** M7-M8. See `docs/03-phase3-production-vps.md`.
+- **Exit:** M7-M8; M8's local half is verified. See `docs/03-phase3-production-vps.md`.
 
 ### Phase 4 - Integrations & analytics 🟡
 - [x] AI assistant / auto-responder (`apps/solrise_erp/assistant/`)
