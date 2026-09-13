@@ -141,7 +141,7 @@ Update the **Status** column as you go - this table is the single source of trut
 │   ├── restore.sh          # restore onto any stack/VPS
 │   └── bootstrap-vps.sh    # Ubuntu host preparation
 ├── fixtures/               # committed exports (durable config)
-└── docs/                   # PLAN + 01..12 guides, runbook, checklist, execution log, branding
+└── docs/                   # PLAN + 01..13 guides, runbook, checklist, execution log, branding
 ```
 
 ---
