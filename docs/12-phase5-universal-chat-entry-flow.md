@@ -15,10 +15,11 @@ This phase **extends** the Stage 4 assistant; it does not replace it.
 **Builds on:** `apps/solrise_erp/` (`assistant/`, `permissions.py`, `api/v1.py`,
 `public/js/solrise_erp.js`, DocType `Solrise Chat Log`).
 
-**Progress:** 5.0-5.5 are code-complete and verified against the running stack on
-the app branch `feature/universal-chat-entry-flow` (image rebuilt from
-`824501a`). Phase 5.6 is not started. The transactional `turn()` endpoint is live;
-only the Desk/Portal widget remains.
+**Progress:** all of Phase 5 (5.0-5.6) is code-complete and verified against the
+running stack on the app branch `feature/universal-chat-entry-flow` (image rebuilt
+from `f055e87`). The transactional `turn()` endpoint and both widgets are live.
+The widget's *interaction* is not machine-verified (no browser automation here),
+but its assets load and every endpoint it calls is verified.
 
 ---
 
@@ -356,13 +357,24 @@ the previous exit criteria are met.
 > pending intent; `remember_pending` now drops the memo first. (Production turns
 > are separate requests, so this only bit the console and tests.)
 
-### Phase 5.6 - Widgets (Desk + Portal) + hardening ⬜
-- [ ] `public/js/solrise_chat.js` shared by both surfaces; `.text()` rendering only.
-- [ ] Quick-action buttons + free-text input; action links use `frappe.set_route`
-      in Desk and `window.location` in Portal.
-- [ ] LLM slot-filler behind `chat_enable_llm_fallback` (JSON contract, validated).
-- [ ] Rate limit, loop guards, audit redaction, log retention.
-- **Exit:** §9 test plan passes on both Desk and Portal.
+### Phase 5.6 - Widgets (Desk + Portal) + hardening ✅
+- [x] `public/js/solrise_chat.js` shared by both surfaces (navbar item in Desk,
+      floating button elsewhere); every string rendered with `.text()`.
+- [x] Quick-action buttons, free-text input, confirm/transition choices, and
+      links that use `frappe.set_route` in Desk and `location.href` on Portal.
+- [x] Optional LLM slot-filler behind `chat_enable_llm_fallback` - JSON
+      contract, validated by `nlp.validate_proposal`, degrades to a
+      clarification on any failure.
+- [x] Per-user rate limit, clarification loop guard (`chat_max_slot_turns`),
+      audit redaction of credential-like slots, and
+      `audit_log_retention_days` wired into the nightly purge.
+- **Exit met:** 19 unit tests; JS passes `node --check`; both assets serve 200;
+  redaction, loop guard, rate limit and graceful fallback verified on the built
+  image.
+
+> **Not machine-verified.** The widget's click-through behaviour (button mount,
+> dialog interactions) needs a human on Desk and Portal - there is no browser
+> automation in this environment. Everything the widget calls is verified.
 
 ---
 
@@ -386,7 +398,8 @@ apps/solrise_erp/solrise_erp/
 │   └── audit.py          # Solrise AI Audit Log writer
 ├── api/chat.py           # whitelisted HTTP surface
 ├── tests/test_chat_nlp.py# phrase corpus (runs standalone)
-└── public/js/solrise_chat.js
+├── public/js/solrise_chat.js
+└── public/css/solrise_chat.css
 ```
 
 ### 6.1 `hooks.py` additions
