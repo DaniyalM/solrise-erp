@@ -386,3 +386,36 @@ ordering is now automatic: `scripts/create-site.sh` runs `setup_erp.py` and then
 `roles_rbac.py` immediately after `bench install-app` / `migrate`. Widening the
 fixture to include framework roles would instead violate the "never overwrite
 framework records" rule in `hooks.py`.
+
+---
+
+## 10. Round 6 - M8 backup/restore rehearsal
+
+Ran the local half of the M8 drill: `make backup`, then `./scripts/restore.sh`
+against the same site.
+
+`make backup` produced the expected set (database 1.1 MiB, public and private
+file tars, site config). The first restore stopped at an interactive
+`MySQL root password:` prompt and did nothing: `bench restore` needs the DB root
+password and the script never passed it, so a non-interactive run blocked on the
+prompt and returned without touching the database. The site stayed healthy,
+which is how we knew it had aborted rather than half-run.
+
+Fixed `restore.sh` to pass `--mariadb-root-username` / `--mariadb-root-password`
+from `.env` (plus `--admin-password` for `--new`) and to fail fast when
+`DB_ROOT_PASSWORD` is unset. Re-ran the drill - restore, migrate and clear-cache
+completed - and the fingerprint before/after matched exactly:
+
+| Check | Before | After |
+|---|---|---|
+| Solrise roles | 6 | 6 |
+| Solrise workflows | 4 | 4 |
+| Solrise reports | 9 | 9 |
+| `Custom DocPerm` rows | 368 | 368 |
+| `Solrise AI Audit Log` DocType | 1 | 1 |
+| `enable_universal_chat` | 1 | 1 |
+
+Still pending for M8: the SCP hop and a restore onto a real VPS (needs a host).
+For M7 the locally checkable parts pass: `bootstrap-vps.sh` passes `bash -n` and
+`compose.prod.yaml` renders with its Traefik labels; certificate issuance needs a
+domain pointed at a VPS.

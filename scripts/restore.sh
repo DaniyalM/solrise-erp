@@ -40,7 +40,13 @@ log "copying backup into the backend container ..."
 compose exec -T backend bash -lc "rm -rf ${REL} && mkdir -p ${REL}"
 tar -cf - -C "${DIR}" . | compose exec -T backend bash -lc "tar -xf - -C ${REL}"
 
+# bench restore needs the DB root password; without it, it prompts on stdin and
+# silently aborts a non-interactive restore (see docs/09 execution log).
+: "${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is not set in .env - bench restore needs it}"
 RESTORE_ARGS=("bench" "--site" "${SITE_NAME}" "--force" "restore" "${REL}/$(basename "${DB_BACKUP}")")
+RESTORE_ARGS+=("--mariadb-root-username" "${DB_ROOT_USERNAME:-root}")
+RESTORE_ARGS+=("--mariadb-root-password" "${DB_ROOT_PASSWORD}")
+[ -n "${ADMIN_PASSWORD:-}" ] && RESTORE_ARGS+=("--admin-password" "${ADMIN_PASSWORD}")
 [ -n "${PUB_BACKUP}" ] && RESTORE_ARGS+=("--with-public-files" "${REL}/$(basename "${PUB_BACKUP}")")
 [ -n "${PRIV_BACKUP}" ] && RESTORE_ARGS+=("--with-private-files" "${REL}/$(basename "${PRIV_BACKUP}")")
 

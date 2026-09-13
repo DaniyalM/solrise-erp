@@ -297,6 +297,31 @@ report. Then delete the copied backup from `/root` on the VPS.
 > regardless of the source site name. File paths inside the DB that reference
 > `/files/...` are relative and remain valid.
 
+### e. Local rehearsal (verified)
+
+The dump -> restore half of this path is rehearsed locally:
+
+```bash
+make backup                              # ./backups/<stamp>/
+./scripts/restore.sh ./backups/<stamp>   # same site, bench restore --force
+```
+
+Verified 2026-09-13: `make backup` produced a complete set (database, public and
+private files, site config); `restore.sh` reloaded it, re-ran migrate and
+clear-cache, and the post-restore fingerprint matched exactly - 6 roles,
+4 workflows, 9 reports, 368 `Custom DocPerm` rows, the `Solrise AI Audit Log`
+DocType, and `enable_universal_chat = 1`.
+
+> **Bug found and fixed here.** `bench restore` needs the DB root password. The
+> script did not pass it, so a non-interactive restore stopped at an interactive
+> `MySQL root password:` prompt and silently did nothing. `restore.sh` now passes
+> `--mariadb-root-username` / `--mariadb-root-password` (and `--admin-password`
+> for `--new`) from `.env`, and fails fast with a clear message when
+> `DB_ROOT_PASSWORD` is unset. This is why `DB_ROOT_PASSWORD` is the one secret
+> your backups depend on.
+
+The SCP hop and the restore onto a real VPS still need a host (see M7).
+
 ---
 
 ## 3.9 Ongoing updates
@@ -323,5 +348,10 @@ podman exec -it solrise-backend bench --site erp.yourdomain.com migrate
 - [ ] `http://` redirects to `https://`
 - [ ] All services `Up`; `traefik` healthy
 - [ ] Restored data visible after login
-- [ ] A fresh `make backup` produces a restorable set
+- [x] A fresh `make backup` produces a restorable set (verified locally, §3.8e)
 - [ ] SSH password auth disabled; ufw active; 2FA on admin
+
+> Locally verifiable parts are done: `bootstrap-vps.sh` passes `bash -n`, the
+> production compose file renders with its Traefik labels, and the
+> backup -> restore round trip is rehearsed. The TLS and off-host steps need a
+> VPS with a domain pointed at it.
