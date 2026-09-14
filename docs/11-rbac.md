@@ -127,6 +127,12 @@ That makes joiners/leavers a one-field change and keeps the matrix auditable.
 | Solrise Administrator | `Solrise Admin`, `System Manager` (break-glass only) |
 | Solrise Super Administrator | `Solrise Super Admin`, `System Manager` |
 
+> All eleven profiles are created from code on every `bench migrate`
+> (`solrise_erp.install.ensure_role_profiles`), together with the two custom roles
+> they need - `Department Head` and `Solrise Super Admin`. A profile whose roles
+> are not all present is skipped rather than created half-populated. Assign a
+> profile to a user; never tick roles by hand.
+
 ---
 
 ## 2. Per-role breakdown
