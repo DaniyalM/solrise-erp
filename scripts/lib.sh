@@ -31,9 +31,22 @@ case "${SITE_ENV}" in
   *) echo "ERROR: SITE_ENV must be 'local' or 'prod' (got '${SITE_ENV}')" >&2; exit 1 ;;
 esac
 
+# Optional extra compose files, layered after the primary one (space separated).
+# Used to rehearse the production topology on a workstation, where public ACME
+# cannot run:
+#   SITE_ENV=prod COMPOSE_EXTRA_FILES=compose/compose.prod.test.yaml \
+#     ./scripts/create-site.sh
+COMPOSE_EXTRA_FILES="${COMPOSE_EXTRA_FILES:-}"
+
 compose() {
+  local files=(-f "${COMPOSE_FILE}")
+  local extra
+  for extra in ${COMPOSE_EXTRA_FILES}; do
+    [ -f "${ROOT_DIR}/${extra}" ] || die "COMPOSE_EXTRA_FILES: not found: ${extra}"
+    files+=(-f "${ROOT_DIR}/${extra}")
+  done
   # shellcheck disable=SC2086
-  ${COMPOSE_CMD} -f "${COMPOSE_FILE}" --env-file "${ROOT_DIR}/.env" "$@"
+  ${COMPOSE_CMD} "${files[@]}" --env-file "${ROOT_DIR}/.env" "$@"
 }
 
 log() { printf '\033[36m[solrise]\033[0m %s\n' "$*"; }

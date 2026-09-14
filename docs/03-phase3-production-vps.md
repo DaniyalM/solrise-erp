@@ -342,6 +342,64 @@ podman exec -it solrise-backend bench --site erp.yourdomain.com migrate
 
 ---
 
+## 3.10 Rehearsing the production stack on a workstation
+
+You can bring the *production* topology up on a workstation before touching a
+VPS, to catch compose/config problems early. Public ACME cannot work here (the
+HTTP-01 challenge needs a public domain pointed at this machine), so the only
+thing you cannot rehearse is certificate issuance.
+
+```bash
+make local-down                     # local and prod share volumes - never both
+
+# .env: DOMAIN and SITE_NAME must match, and DOCKER_SOCK must be the podman socket
+#   DOMAIN=erp.localhost            SITE_NAME=erp.localhost
+#   DOCKER_SOCK=/run/user/$(id -u)/podman/podman.sock
+#   TLS_CERT_RESOLVER=              (empty -> Traefik's built-in self-signed cert)
+
+SITE_ENV=prod ./scripts/create-site.sh     # up + create-site + config + RBAC
+
+curl -sk --resolve erp.localhost:8443:127.0.0.1 \
+     -o /dev/null -w "login %{http_code}\n" https://erp.localhost:8443/login
+```
+
+On the VPS, remove `TLS_CERT_RESOLVER` from `.env` so the `main-resolver` issues
+the real certificate.
+
+### What this rehearsal proves
+
+Verified on 2026-09-14 against the production compose file: all ten services up,
+`proxy` healthy, HTTP `:8080` redirects to HTTPS, HTTPS terminates through
+traefik to the frontend, `/login` `200`, app assets `200`, `/api/method/ping`
+`200`, the `solrise-compress` middleware active (`Content-Encoding: gzip`),
+create-site idempotent, `bench migrate` clean with `developer_mode 0`, the prod
+backup path works, scheduled tasks run, and the site survives a full
+`down`/`up` (named volumes persist).
+
+### Not provable locally
+
+Let's Encrypt issuance and renewal, and the `http -> https` redirect landing on
+the real domain (locally the redirect targets `:443`, which is published as
+`8443`). Both are VPS-only, and both are pure Traefik configuration - the code
+and data path they front were exercised above.
+
+### Issues this rehearsal found (fixed)
+
+| Issue | Fix |
+|---|---|
+| `proxy` always reported **unhealthy**: the healthcheck ran `traefik healthcheck`, which needs `--ping` and cannot see the server's flags from a fresh process. | `--ping=true` + `--entrypoints.traefik.address=:8080`, and the healthcheck now probes `http://127.0.0.1:8080/ping` directly. |
+| `config/traefik/dynamic.yaml` was **never mounted**, so its middleware, transport timeouts and TLS options silently did nothing. | The `proxy` service mounts it and passes `--providers.file.directory`; the router now uses `solrise-compress@file` and `solrise-upstream@file`. |
+| `sniStrict: true` in that file broke every handshake whose SNI did not match a served certificate (self-signed rehearsals, IP-based probes) - and Traefik applies the option named `default` **globally**. | Removed `sniStrict`; `minVersion: VersionTLS12` and the cipher suites remain. |
+| `.env` shipped `DOCKER_SOCK=/var/run/docker.sock` and `DOMAIN` that disagreed with `SITE_NAME`, so Traefik could not reach podman and no router matched. | Documented the required values above. |
+| A site created by the **local** stack keeps `developer_mode = 1` at site level, which overrides the prod global. | On the VPS, `create-site` sets it to `0`; when rehearsing on existing data run `bench --site <site> set-config developer_mode 0`. |
+
+> Local and production compose files declare the **same named volumes**
+> (`solrise_sites`, `solrise_db_data`, `solrise_redis_queue`), so the rehearsal
+> reuses your local site - which is exactly what a restore onto a VPS looks like.
+> It also means you must stop one stack before starting the other.
+
+---
+
 ## Exit criteria
 
 - [ ] `https://erp.yourdomain.com` serves a trusted certificate (no browser warning)
