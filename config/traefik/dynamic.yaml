@@ -23,7 +23,11 @@ tls:
   options:
     default:
       minVersion: VersionTLS12
-      sniStrict: true
+      # NOTE: `sniStrict: true` is deliberately NOT set. Traefik applies the TLS
+      # option named `default` globally, so sniStrict rejects any handshake whose
+      # SNI does not match a served certificate - including local rehearsals with
+      # the built-in self-signed cert, and IP-based monitoring probes. The
+      # cipher/minVersion floor below is what actually matters here.
       cipherSuites:
         - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
         - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256

@@ -143,8 +143,15 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.frontend.loadbalancer.server.port=8080
+      - traefik.http.services.frontend.loadbalancer.serverstransport=solrise-upstream@file
       - traefik.http.routers.frontend-http.entrypoints=websecure
-      - traefik.http.routers.frontend-http.tls.certresolver=main-resolver
+      - traefik.http.routers.frontend-http.middlewares=solrise-compress@file
+      # Empty TLS_CERT_RESOLVER leaves the router on Traefik's built-in
+      # self-signed certificate: that is how the production topology is
+      # rehearsed on a workstation, where a public ACME challenge cannot run.
+      # On the VPS leave it unset so the default `main-resolver` issues the
+      # real Let's Encrypt certificate.
+      - traefik.http.routers.frontend-http.tls.certresolver=${TLS_CERT_RESOLVER-main-resolver}
       - traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)
     depends_on:
       - backend
@@ -169,14 +176,22 @@ services:
       - --certificatesResolvers.main-resolver.acme.email=${LETSENCRYPT_EMAIL}
       - --certificatesResolvers.main-resolver.acme.storage=/letsencrypt/acme.json
       - --accesslog=true
+      # Ping endpoint on :8080 (not published) - the container healthcheck below
+      # probes it. The `traefik healthcheck` CLI does not see --ping because it
+      # runs as a fresh process, so we probe the endpoint directly.
+      - --entrypoints.traefik.address=:8080
+      - --ping=true
+      # Load config/traefik/dynamic.yaml (middlewares, transports, TLS options).
+      - --providers.file.directory=/etc/traefik/dynamic
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
       - cert-data:/letsencrypt
+      - ../config/traefik/dynamic.yaml:/etc/traefik/dynamic/dynamic.yaml:ro
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/ping"]
       interval: 30s
       timeout: 5s
       retries: 3
