@@ -259,6 +259,18 @@ Add a "Universal Chat" section:
 | `chat_allow_approve` | Check | 0 | Workflow transitions require explicit opt-in. |
 | `chat_max_slot_turns` | Int | 4 | Clarification loop guard. |
 | `chat_allowed_doctypes` | Small Text | (empty = menu defaults) | Hard allowlist of transactional DocTypes. |
+| `chat_enforce_permlevel` | Check | 1 | Respect field-level security (permlevel). Off = chat may touch restricted fields. |
+| `chat_allowed_workflows` | Small Text | (empty = all) | Document types whose approvals may be actioned from chat. |
+| `chat_knowledge_base_doctype` | Link DocType | `Solrise FAQ` | Where the Knowledge Base quick action points. |
+| `chat_my_tasks_doctypes` | Small Text | `Issue` | DocTypes the My Tasks quick action searches. |
+| `chat_urgency_field` | Data | `priority` | Field urgency sets on create/update; empty = audit only. |
+
+**These fields answer the open questions in section 10.** `chat_enforce_permlevel`
+is the field-level-security decision, `chat_allowed_workflows` scopes approvals,
+`chat_knowledge_base_doctype` names the Knowledge Base source,
+`chat_my_tasks_doctypes` defines My Tasks, and `chat_urgency_field` fixes what
+urgency does. Each is a `Solrise Settings` value, not a code branch, so the
+answer is auditable and changeable without a deploy.
 
 > `chat_allowed_doctypes` is the **fourth** gate: even if a role could write a
 > DocType, the chat flow will not touch it unless it is listed here.
@@ -1138,20 +1150,28 @@ credential values.
 
 ---
 
-## 10. Open questions / decisions needed
+## 10. Decisions
 
-1. **Field-level security:** must chat respect permlevel-based field read/write? If
-   yes, `schema.py` and `executor.py` need `get_permlevel_access` filtering.
-2. **Approvals scope:** which workflows may be actioned from chat, and do they
-   require a second approver acknowledgment?
-3. **Knowledge Base source:** is "Knowledge Base" the curated `Solrise FAQ`, or a
-   new DocType with an editor?
-4. **"My Tasks":** is this `ToDo` + `Issue` assigned to the user, or the HRMS
-   task list? Affects the menu definition.
-5. **Urgency semantics:** does urgency only set `priority`, or does it also route
-   to a channel/fast SLA? Keep it declarative (a mapping table), not code.
-6. **Audit retention:** confirm the retention window and whether audit rows are
-   included in off-host backups.
+Each question below now has an explicit answer, and where it changes behaviour
+the answer is a `Solrise Settings` field rather than a code branch.
+
+| Question | Decision | Setting |
+|---|---|---|
+| Field-level security | **Respected by default.** `schema.py` / `executor.py` skip `permlevel > 0` fields; turning this off lets chat read/write restricted fields. | `chat_enforce_permlevel` |
+| Approvals scope | Every active workflow may be actioned unless this names the permitted document types. Approvals still need a confirmation turn; `allow_self_approval` stays 0. | `chat_allowed_workflows` |
+| Knowledge Base source | The curated `Solrise FAQ`; point elsewhere to change the source. | `chat_knowledge_base_doctype` |
+| My Tasks | `Issue` - tickets the user owns or is assigned; add `ToDo` or another list as needed. | `chat_my_tasks_doctypes` |
+| Urgency semantics | Urgency sets `priority` (validated against the DocType's own link/select values) and is audited. Empty the setting to record urgency only. It never widens permissions. | `chat_urgency_field` |
+| Audit retention / backups | `audit_log_retention_days` (default 180) drives the nightly purge. Audit rows live in the database, so `bench backup` includes them - treat the off-host backup as in scope for audit data. | `audit_log_retention_days` |
+
+**Still open, deliberately not code:**
+
+- **Second-approver acknowledgment** for high-value approvals. An approval today is
+  one transition plus a confirmation; dual control belongs in the workflow (an
+  extra state/transition), not in chat.
+- **Per-permlevel field access.** Chat honours permlevel by skipping those fields.
+  If a DocType needs partial field access from chat, raise the field's permlevel
+  rather than granting it piecemeal (`get_permlevel_access`).
 
 ---
 

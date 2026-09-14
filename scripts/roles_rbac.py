@@ -29,6 +29,9 @@ ROLES = [
     ("CRM Manager", 1),
     ("Finance Approver", 1),
     ("Solrise Admin", 1),
+    # Referenced by the row rules in apps/solrise_erp/permissions.py.
+    ("Department Head", 1),
+    ("Solrise Super Admin", 1),
 ]
 
 # role -> [(doctype, permlevel, {perm flags})]
@@ -65,6 +68,15 @@ GRANTS = {
         ("Sales Invoice", 0, {"read": 1, "submit": 1}),
     ],
     "Solrise Admin": [],  # role exists for workflow step assignment; perms via System Manager
+    # Team-scoped read plus the approve actions; the row rules in permissions.py
+    # narrow these to the user's department.
+    "Department Head": [
+        ("Employee", 0, {"read": 1, "report": 1}),
+        ("Leave Application", 0, {"read": 1, "write": 1, "report": 1}),
+        ("Expense Claim", 0, {"read": 1, "write": 1, "report": 1}),
+        ("Issue", 0, {"read": 1}),
+    ],
+    "Solrise Super Admin": [],  # break-glass: perms via System Manager
 }
 # =============================================================================
 
