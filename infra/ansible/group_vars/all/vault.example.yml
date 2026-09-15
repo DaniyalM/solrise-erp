@@ -1,0 +1,9 @@
+# Copy to vault.yml, fill in, then encrypt:
+#   ansible-vault encrypt group_vars/all/vault.yml
+#
+# The RDS master password is NOT here: AWS generates and rotates it, and the
+# deploy role reads it from Secrets Manager.
+---
+
+# Frappe `Administrator` password, set at site creation.
+vault_admin_password: "change-me-to-something-long-and-random"

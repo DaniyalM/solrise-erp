@@ -11,14 +11,21 @@ log "stack: ${SITE_ENV} (${COMPOSE_FILE})"
 log "starting services ..."
 compose up -d
 
-log "waiting for mariadb to report healthy ..."
-# NOTE: `podman-compose ps` takes no service argument, so filter the output.
-for _ in $(seq 1 60); do
-  if compose ps 2>/dev/null | grep -i mariadb | grep -qi healthy; then
-    break
-  fi
-  sleep 5
-done
+# Only wait for an *embedded* MariaDB. With an external database (RDS) there is
+# no mariadb service, and the TCP endpoint is reachable long before the backend
+# starts talking to it.
+if grep -qE '^  mariadb:' "${COMPOSE_FILE}"; then
+  log "waiting for mariadb to report healthy ..."
+  # NOTE: `podman-compose ps` takes no service argument, so filter the output.
+  for _ in $(seq 1 60); do
+    if compose ps 2>/dev/null | grep -i mariadb | grep -qi healthy; then
+      break
+    fi
+    sleep 5
+  done
+else
+  log "external database (no embedded mariadb service) - skipping local db wait"
+fi
 
 log "running create-site (idempotent) ..."
 compose --profile init run --rm create-site

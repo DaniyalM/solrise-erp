@@ -1,0 +1,52 @@
+# Copy to terraform.tfvars and edit. terraform.tfvars is gitignored.
+# No database password belongs here - AWS generates and stores it.
+
+aws_region = "us-east-1"
+name_prefix = "solrise"
+
+domain             = "erp.example.com"
+letsencrypt_email  = "ops@example.com"
+# site_name        = "erp.example.com"   # defaults to erp.<domain>
+
+# --- access ------------------------------------------------------------------
+# Either paste a public key (Terraform creates the key pair) ...
+ssh_public_key        = "ssh-ed25519 AAAA... you@workstation"
+ssh_private_key_path  = "~/.ssh/id_ed25519"
+# ... or point at an existing key pair and leave ssh_public_key empty.
+# key_name = "my-existing-key"
+
+# Lock SSH down to your egress IP:
+ssh_cidr_blocks = ["203.0.113.4/32"]
+
+# --- compute -----------------------------------------------------------------
+instance_type    = "t3.large"
+root_volume_size = 80
+
+# --- RDS ---------------------------------------------------------------------
+# Verify the engine version is offered in your region (`aws rds describe-db-engine-versions
+# --engine mariadb`). engine_version and the parameter group family must match.
+db_engine_version          = "11.4"
+db_parameter_group_family  = "mariadb11.4"
+db_instance_class          = "db.t4g.medium"
+db_allocated_storage       = 50
+db_username                = "solrise_admin"
+db_multi_az                = false
+db_backup_retention_days   = 14
+db_deletion_protection     = true
+db_skip_final_snapshot     = false
+
+# --- DNS ---------------------------------------------------------------------
+# route53_zone_id = "Z0123456789ABCDEFGHIJ"
+
+# --- artifacts ---------------------------------------------------------------
+enable_ecr           = true
+enable_backup_bucket = true
+backup_retention_days = 30
+
+# --- GitHub Actions image build (OIDC) ---------------------------------------
+# The repo allowed to push images, as owner/name. Empty = no CI role created.
+github_repository   = "CHANGE-ME/solrise-app"
+github_oidc_branch  = "refs/heads/main"
+# Set false if the AWS account already has a GitHub OIDC provider.
+create_github_oidc_provider = true
+# github_oidc_provider_arn  = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"

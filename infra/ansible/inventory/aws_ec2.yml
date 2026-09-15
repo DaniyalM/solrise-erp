@@ -1,0 +1,21 @@
+# Dynamic inventory: discover the app host by its Terraform tag.
+#   ansible-playbook -i inventory/aws_ec2.yml site.yml
+# Requires the amazon.aws collection and AWS credentials/boto3 on the control node.
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - "{{ lookup('env', 'AWS_REGION') | default('us-east-1', true) }}"
+
+filters:
+  tag:Role: solrise-app
+  instance-state-name: running
+
+hostnames:
+  - tag:Name
+
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"
+
+groups:
+  solrise: "tags.Role == 'solrise-app'"

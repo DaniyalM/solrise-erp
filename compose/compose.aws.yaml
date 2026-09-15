@@ -1,0 +1,214 @@
+# =============================================================================
+# Solrise ERP - AWS stack (EC2 application host + external MariaDB on RDS)
+#
+# Identical to compose.prod.yaml except:
+#   * there is NO `mariadb` service - the database lives on Amazon RDS;
+#   * the `configurator` writes DB_HOST/DB_PORT from .env (the RDS endpoint);
+#   * create-site authenticates with the RDS master user (DB_ROOT_USERNAME),
+#     because RDS has no `root` account.
+#
+# Everything else - Traefik + Let's Encrypt, redis, gunicorn, websocket, queues,
+# scheduler - is unchanged, so the local/prod rehearsals still apply.
+#
+#   manage this stack with:  SITE_ENV=aws make aws-up   /  make site
+#   (or directly:            podman-compose -f compose/compose.aws.yaml up -d)
+#
+# Provisioning is done by infra/terraform; configuration by infra/ansible.
+# =============================================================================
+
+x-image: &image
+  image: ${CUSTOM_IMAGE:-solrise/erpnext}:${CUSTOM_TAG:-version-15}
+  pull_policy: ${PULL_POLICY:-missing}
+
+x-backend: &backend
+  <<: *image
+  restart: unless-stopped
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
+
+services:
+  # ------------------------------------------------------------------- redis --
+  # The database is external (RDS); only Redis stays on the host.
+  redis-cache:
+    image: docker.io/redis:8.6-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis-queue:
+    image: docker.io/redis:8.6-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-queue-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------ configurator --
+  # Writes common_site_config.json pointing the framework at RDS. It touches no
+  # database itself, so it only waits for redis - not for a db container.
+  configurator:
+    <<: *image
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host $$DB_HOST;
+        bench set-config -gp db_port $$DB_PORT;
+        bench set-config -g redis_cache "redis://$$REDIS_CACHE";
+        bench set-config -g redis_queue "redis://$$REDIS_QUEUE";
+        bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
+        bench set-config -gp socketio_port $$SOCKETIO_PORT;
+        bench set-config -g developer_mode 0;
+        echo "configurator: common_site_config.json -> db_host=$$DB_HOST:$$DB_PORT";
+    environment:
+      DB_HOST: ${DB_HOST:?DB_HOST must point at the RDS endpoint}
+      DB_PORT: ${DB_PORT:-3306}
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      SOCKETIO_PORT: "${SOCKETIO_PORT:-9000}"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    depends_on:
+      redis-cache:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------- backend --
+  backend:
+    <<: *backend
+    environment:
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-4}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+
+  # --------------------------------------------------------------- websocket --
+  websocket:
+    <<: *backend
+    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
+
+  # ----------------------------------------------------------------- workers --
+  queue-short:
+    <<: *backend
+    command: ["bench", "worker", "--queue", "short,default"]
+
+  queue-long:
+    <<: *backend
+    command: ["bench", "worker", "--queue", "long,default,short"]
+
+  scheduler:
+    <<: *backend
+    command: ["bench", "schedule"]
+
+  # ---------------------------------------------------------------- frontend --
+  frontend:
+    <<: *image
+    restart: unless-stopped
+    command: ["nginx-entrypoint.sh"]
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: ${SITE_NAME}
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: "${PROXY_READ_TIMEOUT:-120}"
+      CLIENT_MAX_BODY_SIZE: "${CLIENT_MAX_BODY_SIZE:-50m}"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.frontend.loadbalancer.server.port=8080
+      - traefik.http.services.frontend.loadbalancer.serverstransport=solrise-upstream@file
+      - traefik.http.routers.frontend-http.entrypoints=websecure
+      - traefik.http.routers.frontend-http.middlewares=solrise-compress@file
+      - traefik.http.routers.frontend-http.tls.certresolver=${TLS_CERT_RESOLVER-main-resolver}
+      - traefik.http.routers.frontend-http.rule=Host(`${DOMAIN}`)
+    depends_on:
+      - backend
+      - websocket
+
+  # ------------------------------------------------------------------- proxy --
+  proxy:
+    image: docker.io/traefik:v3.7
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.underscoreHeadersStrategy=delete
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.underscoreHeadersStrategy=delete
+      - --certificatesResolvers.main-resolver.acme.httpChallenge=true
+      - --certificatesResolvers.main-resolver.acme.httpChallenge.entrypoint=web
+      - --certificatesResolvers.main-resolver.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesResolvers.main-resolver.acme.storage=/letsencrypt/acme.json
+      - --accesslog=true
+      - --entrypoints.traefik.address=:8080
+      - --ping=true
+      - --providers.file.directory=/etc/traefik/dynamic
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      - cert-data:/letsencrypt
+      - ../config/traefik/dynamic.yaml:/etc/traefik/dynamic/dynamic.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ------------------------------------------------------------- create-site --
+  create-site:
+    <<: *backend
+    profiles: ["init"]
+    entrypoint: ["bash", "-c"]
+    environment:
+      SITE_NAME: ${SITE_NAME}
+      DB_HOST: ${DB_HOST:?DB_HOST must point at the RDS endpoint}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_ROOT_USERNAME: ${DB_ROOT_USERNAME:-root}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      INSTALL_APPS: ${INSTALL_APPS:-erpnext hrms}
+    command:
+      - >
+        set -e;
+        if [ -d "sites/$$SITE_NAME" ]; then echo "site $$SITE_NAME already exists - skipping creation"; else
+        bench new-site
+        --db-host "$$DB_HOST" --db-port "$$DB_PORT"
+        --mariadb-root-username "$$DB_ROOT_USERNAME"
+        --mariadb-root-password "$$DB_ROOT_PASSWORD"
+        --admin-password "$$ADMIN_PASSWORD"
+        --no-mariadb-socket "$$SITE_NAME";
+        for app in $${INSTALL_APPS//,/ }; do echo "installing $$app"; bench --site "$$SITE_NAME" install-app "$$app"; done;
+        bench --site "$$SITE_NAME" set-config developer_mode 0;
+        bench --site "$$SITE_NAME" enable-scheduler;
+        fi;
+        bench use "$$SITE_NAME";
+        echo "create-site: done";
+
+volumes:
+  sites:
+    name: ${SITES_VOLUME:-solrise_sites}
+  redis-queue-data:
+    name: ${REDIS_QUEUE_VOLUME:-solrise_redis_queue}
+  cert-data:
+    name: ${LETSENCRYPT_VOLUME:-solrise_letsencrypt}
+
+networks:
+  default:
+    name: ${COMPOSE_PROJECT_NAME:-solrise}_net

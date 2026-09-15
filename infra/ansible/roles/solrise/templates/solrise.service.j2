@@ -1,0 +1,21 @@
+[Unit]
+Description=Solrise ERP (podman-compose, external RDS MariaDB)
+Documentation=https://github.com/CHANGE-ME/solrise-app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ app_dir }}
+ExecStart=/usr/bin/podman-compose -f compose/compose.aws.yaml --env-file .env up -d
+ExecStop=/usr/bin/podman-compose -f compose/compose.aws.yaml --env-file .env down
+ExecReload=/usr/bin/podman-compose -f compose/compose.aws.yaml --env-file .env up -d
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=30
+# Rootless podman: %t is the user's XDG_RUNTIME_DIR (/run/user/<uid>).
+Environment=XDG_RUNTIME_DIR=%t
+
+[Install]
+WantedBy=default.target

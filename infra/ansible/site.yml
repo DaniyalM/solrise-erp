@@ -1,0 +1,37 @@
+---
+# =============================================================================
+# Configure an EC2 host (provisioned by infra/terraform) and deploy Solrise ERP
+# against an external RDS MariaDB.
+#
+#   ansible-galaxy collection install -r requirements.yml
+#   ansible-playbook site.yml                       # everything
+#   ansible-playbook site.yml --tags host           # OS prep only
+#   ansible-playbook site.yml --tags deploy         # redeploy only
+#
+# Secrets:
+#   * RDS master password - read from Secrets Manager (created by Terraform)
+#   * Administrator password - Ansible Vault (group_vars/all/vault.yml)
+# =============================================================================
+
+- name: Provision and deploy Solrise ERP
+  hosts: solrise
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Look up the deploy account
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ deploy_user }}"
+
+    - name: Record deploy account facts
+      ansible.builtin.set_fact:
+        deploy_uid: "{{ ansible_facts.getent_passwd[deploy_user][1] }}"
+        deploy_gid: "{{ ansible_facts.getent_passwd[deploy_user][2] }}"
+        deploy_home: "{{ ansible_facts.getent_passwd[deploy_user][4] }}"
+
+  roles:
+    - role: host
+      tags: [host]
+    - role: solrise
+      tags: [deploy]

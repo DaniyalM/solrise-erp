@@ -28,7 +28,10 @@ SITE_ENV="${SITE_ENV:-local}"
 case "${SITE_ENV}" in
   local) COMPOSE_FILE="${ROOT_DIR}/compose/compose.local.yaml" ;;
   prod)  COMPOSE_FILE="${ROOT_DIR}/compose/compose.prod.yaml" ;;
-  *) echo "ERROR: SITE_ENV must be 'local' or 'prod' (got '${SITE_ENV}')" >&2; exit 1 ;;
+  # AWS: same topology as prod, but MariaDB lives on RDS instead of in a
+  # container. See compose/compose.aws.yaml and infra/.
+  aws)   COMPOSE_FILE="${ROOT_DIR}/compose/compose.aws.yaml" ;;
+  *) echo "ERROR: SITE_ENV must be 'local', 'prod' or 'aws' (got '${SITE_ENV}')" >&2; exit 1 ;;
 esac
 
 # Optional extra compose files, layered after the primary one (space separated).

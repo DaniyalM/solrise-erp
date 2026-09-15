@@ -4,6 +4,8 @@ SHELL := /bin/bash
 ENV_FILE := .env
 LOCAL := compose/compose.local.yaml
 PROD := compose/compose.prod.yaml
+# Production topology with MariaDB on RDS (no embedded db container).
+AWS := compose/compose.aws.yaml
 
 COMPOSE_CMD ?= podman-compose
 
@@ -11,7 +13,8 @@ COMPOSE_CMD ?= podman-compose
 export
 
 .PHONY: help image local-up local-down init site logs ps shell \
-        prod-up prod-down prod-logs backup restore fixtures pull-fixtures
+        prod-up prod-down prod-logs aws-up aws-down aws-logs \
+        backup restore fixtures pull-fixtures
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -48,6 +51,15 @@ prod-down: ## Stop the production stack
 
 prod-logs: ## Tail production logs
 	$(COMPOSE_CMD) -f $(PROD) --env-file $(ENV_FILE) logs -f --tail=100
+
+aws-up: ## Start the AWS stack (EC2 + external RDS MariaDB)
+	$(COMPOSE_CMD) -f $(AWS) --env-file $(ENV_FILE) up -d
+
+aws-down: ## Stop the AWS stack
+	$(COMPOSE_CMD) -f $(AWS) --env-file $(ENV_FILE) down
+
+aws-logs: ## Tail AWS stack logs
+	$(COMPOSE_CMD) -f $(AWS) --env-file $(ENV_FILE) logs -f --tail=100
 
 backup: ## Dump DB + files and copy them to $(BACKUP_DIR)
 	./scripts/backup.sh

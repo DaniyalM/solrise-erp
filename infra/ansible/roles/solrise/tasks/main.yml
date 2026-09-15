@@ -1,0 +1,234 @@
+---
+# =============================================================================
+# Deploy Solrise ERP: clone the repo, render .env from the live AWS facts, build
+# the image, bring the stack up against RDS, create the site, and install the
+# boot unit + backup schedule.
+# =============================================================================
+
+- name: Ensure the Terraform facts are present
+  ansible.builtin.assert:
+    that:
+      - rds_host | default('') | length > 0
+      - db_secret_arn | default('') | length > 0
+      - site_name | default('') | length > 0
+      - domain | default('') | length > 0
+    fail_msg: >-
+      group_vars/all/terraform.yml is missing or incomplete.
+      Run `terraform apply` in infra/terraform first.
+
+- name: Read the RDS master credentials from Secrets Manager
+  ansible.builtin.set_fact:
+    rds_secret: "{{ lookup('amazon.aws.secretsmanager_secret', db_secret_arn, region=aws_region) | from_json }}"
+  no_log: true
+
+- name: Choose the image source (ECR when enabled, otherwise build locally)
+  ansible.builtin.set_fact:
+    effective_image: "{{ ecr_repository_url if (ecr_repository_url | default('') | length > 0) else custom_image }}"
+    effective_pull_policy: "{{ 'always' if (ecr_repository_url | default('') | length > 0) else 'missing' }}"
+    effective_backup_dir: "{{ backup_dir | default('') if (backup_dir | default('') | length > 0) else app_dir + '/backups' }}"
+
+# RDS lives in a private subnet: only the app host can reach it, so probe from
+# the target, not the control node.
+- name: Wait for RDS to accept connections
+  ansible.builtin.wait_for:
+    host: "{{ rds_host }}"
+    port: "{{ rds_port }}"
+    timeout: 120
+
+- name: Ensure the application directory exists
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+  become: true
+
+- name: Clone or update the repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    version: "{{ repo_version }}"
+    dest: "{{ app_dir }}"
+    accept_hostkey: true
+    update: true
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+
+- name: Make the helper scripts executable
+  ansible.builtin.file:
+    path: "{{ app_dir }}/scripts/{{ item }}"
+    mode: "0755"
+  loop:
+    - build-image.sh
+    - create-site.sh
+    - backup.sh
+    - restore.sh
+    - run-python.sh
+    - export-fixtures.sh
+    - pull-fixtures.sh
+    - bootstrap-vps.sh
+  become: true
+  become_user: "{{ deploy_user }}"
+
+- name: Render the production .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0600"
+  vars:
+    db_root_password: "{{ rds_secret.password }}"
+    db_root_username_effective: "{{ rds_secret.username | default(db_root_username) }}"
+    admin_password: "{{ vault_admin_password }}"
+  no_log: true
+
+# --- image -------------------------------------------------------------------
+- name: Log in to ECR
+  ansible.builtin.shell: >-
+    aws ecr get-login-password --region {{ aws_region }}
+    | podman login --username AWS --password-stdin {{ ecr_repository_url.split('/')[0] }}
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  when: ecr_repository_url | default('') | length > 0
+  changed_when: false
+
+- name: Pull the pre-built image from ECR
+  ansible.builtin.command:
+    cmd: "podman pull {{ effective_image }}:{{ custom_tag }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  when: ecr_repository_url | default('') | length > 0
+  changed_when: true
+
+- name: Build the Solrise image (slow - bakes erpnext + hrms + the custom app)
+  ansible.builtin.command:
+    cmd: make image
+    chdir: "{{ app_dir }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  register: image_build
+  async: 5400
+  poll: 30
+  when:
+    - ecr_repository_url | default('') | length == 0
+    - rebuild_image | bool
+  changed_when: "'built' in image_build.stdout"
+
+# --- stack -------------------------------------------------------------------
+- name: Start the stack (Traefik, redis, backend, workers) against RDS
+  ansible.builtin.command:
+    cmd: make aws-up
+    chdir: "{{ app_dir }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  changed_when: true
+
+- name: Create the site and apply programmatic configuration (idempotent)
+  ansible.builtin.command:
+    cmd: ./scripts/create-site.sh
+    chdir: "{{ app_dir }}"
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+    SITE_ENV: aws
+  when: run_site_setup | bool
+  register: site_setup
+  changed_when: "'site setup complete' in site_setup.stdout or 'create-site: done' in site_setup.stdout"
+
+# --- boot unit ---------------------------------------------------------------
+- name: Ensure the user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ deploy_home }}/.config/systemd/user"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0755"
+  become: true
+
+- name: Install the boot unit (rootless podman-compose)
+  ansible.builtin.template:
+    src: solrise.service.j2
+    dest: "{{ deploy_home }}/.config/systemd/user/solrise.service"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: "0644"
+  become: true
+  notify:
+    - reload user systemd
+    - restart solrise
+
+- name: Enable the service
+  ansible.builtin.command: systemctl --user enable solrise.service
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ deploy_uid }}/bus"
+  # `systemctl enable` is idempotent; report it as such rather than always changed.
+  changed_when: false
+
+# --- backups -----------------------------------------------------------------
+- name: Schedule the daily backup
+  ansible.builtin.cron:
+    name: solrise-backup
+    user: "{{ deploy_user }}"
+    hour: "{{ backup_hour }}"
+    minute: "{{ backup_minute }}"
+    cron_file: solrise-backup
+    job: >-
+      env XDG_RUNTIME_DIR=/run/user/{{ deploy_uid }}
+      bash -lc 'cd {{ app_dir }} && SITE_ENV=aws BACKUP_DIR={{ effective_backup_dir }}
+      ./scripts/backup.sh >> {{ app_dir }}/backups/backup.log 2>&1'
+  when: backup_cron_enabled | bool
+
+- name: Schedule the off-box sync to S3
+  ansible.builtin.cron:
+    name: solrise-backup-s3
+    user: "{{ deploy_user }}"
+    hour: "{{ backup_hour }}"
+    minute: "{{ (backup_minute | int) + 30 }}"
+    cron_file: solrise-backup-s3
+    job: >-
+      aws s3 sync {{ effective_backup_dir }} s3://{{ backup_bucket }}/files/
+      --region {{ aws_region }} >> {{ app_dir }}/backups/backup.log 2>&1
+  when:
+    - backup_s3_enabled | bool
+    - backup_bucket | default('') | length > 0
+
+# --- verify ------------------------------------------------------------------
+- name: Wait for the app to answer over HTTPS
+  ansible.builtin.uri:
+    url: "https://{{ site_name }}/api/method/ping"
+    validate_certs: true
+    status_code: 200
+  delegate_to: localhost
+  become: false
+  register: app_ping
+  until: app_ping.status == 200
+  retries: 30
+  delay: 10
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Report the deployment
+  ansible.builtin.debug:
+    msg:
+      - "Solrise ERP deployed: https://{{ site_name }}"
+      - "Database: RDS MariaDB at {{ rds_host }}:{{ rds_port }} (user {{ db_root_username }})"

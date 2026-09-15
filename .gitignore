@@ -25,3 +25,26 @@ __pycache__/
 
 # Custom app - maintained in its own repository (see apps.json / SOLRISE_APP_URL)
 apps/solrise_erp/
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/crash.log
+infra/terraform/crash.*.log
+infra/terraform/*.tfvars
+!infra/terraform/*.tfvars.example
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+infra/terraform/*_override.tf
+infra/terraform/*_override.tf.json
+infra/terraform/.terraformrc
+infra/terraform/terraform.rc
+
+# Ansible
+infra/ansible/*.retry
+infra/ansible/collections/
+infra/ansible/inventory/hosts.ini
+infra/ansible/group_vars/all/terraform.yml
+infra/ansible/group_vars/all/vault.yml
+!infra/ansible/group_vars/all/vault.example.yml

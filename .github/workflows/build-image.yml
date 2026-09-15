@@ -1,0 +1,133 @@
+# =============================================================================
+# Build the Solrise ERP image in CI and push it to Amazon ECR.
+#
+# This offloads the slow bake (frappe + erpnext + hrms + the custom app, ~15 min,
+# memory-hungry) from the production EC2 host. Ansible then only *pulls* the
+# image.
+#
+# Authentication uses GitHub OIDC -> an IAM role created by Terraform. There are
+# no long-lived AWS keys in this repository.
+#
+# Required repository configuration (Settings -> Secrets and variables -> Actions):
+#   Variables:
+#     AWS_REGION           e.g. us-east-1
+#     AWS_ROLE_ARN         terraform output github_actions_role_arn
+#     ECR_REPOSITORY_URL   terraform output ecr_repository_url
+#     CUSTOM_TAG           must match custom_tag in infra/ansible/group_vars/all/main.yml
+#     FRAPPE_BRANCH        e.g. version-15
+#     SOLRISE_APP_BRANCH   e.g. version-15
+#   Secrets:
+#     SOLRISE_APP_URL      git URL for the custom app (embed a token if private)
+#
+# See infra/PREREQUISITES.md for the full account/key checklist.
+# =============================================================================
+
+name: build-image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to build and push
+        required: false
+        default: version-15
+  push:
+    branches: [main]
+    paths:
+      - "apps.json"
+      - "apps.example.json"
+      - "scripts/build-image.sh"
+      - "scripts/push-image.sh"
+      - "scripts/apps-fingerprint.py"
+      - ".github/workflows/build-image.yml"
+
+# OIDC needs id-token; contents:read is enough for checkout.
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_BUILDKIT: "1"
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+  CUSTOM_IMAGE: ${{ vars.ECR_REPOSITORY_URL }}
+  CUSTOM_TAG: ${{ inputs.tag != '' && inputs.tag || vars.CUSTOM_TAG || 'version-15' }}
+  FRAPPE_BRANCH: ${{ vars.FRAPPE_BRANCH || 'version-15' }}
+  SOLRISE_APP_BRANCH: ${{ vars.SOLRISE_APP_BRANCH || 'version-15' }}
+
+jobs:
+  build-and-push:
+    name: Build and push to ECR
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Guard required repository configuration
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "${AWS_REGION:-}" ]          || missing="$missing AWS_REGION"
+          [ -n "${ECR_REPOSITORY_URL:-}" ]  || missing="$missing ECR_REPOSITORY_URL"
+          [ -n "${{ vars.AWS_ROLE_ARN }}" ] || missing="$missing AWS_ROLE_ARN"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository variables:$missing (see infra/PREREQUISITES.md)"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-build-image
+
+      - name: Log in to Amazon ECR
+        run: |
+          set -euo pipefail
+          registry="${ECR_REPOSITORY_URL%%/*}"
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$registry"
+
+      - name: Write .env for the build
+        env:
+          SOLRISE_APP_URL: ${{ secrets.SOLRISE_APP_URL }}
+        run: |
+          set -euo pipefail
+          cat > .env <<EOF
+          CONTAINER_ENGINE=docker
+          COMPOSE_CMD=docker compose
+          CUSTOM_IMAGE=${CUSTOM_IMAGE}
+          CUSTOM_TAG=${CUSTOM_TAG}
+          FRAPPE_PATH=https://github.com/frappe/frappe
+          FRAPPE_BRANCH=${FRAPPE_BRANCH}
+          FRAPPE_IMAGE_PREFIX=docker.io/frappe
+          SOLRISE_APP_URL=${SOLRISE_APP_URL}
+          SOLRISE_APP_BRANCH=${SOLRISE_APP_BRANCH}
+          SITE_NAME=erp.example.com
+          EOF
+          echo "Building ${CUSTOM_IMAGE}:${CUSTOM_TAG} (frappe ${FRAPPE_BRANCH})"
+
+      - name: Build the image
+        run: ./scripts/build-image.sh
+
+      - name: Push the image to ECR
+        run: ./scripts/push-image.sh
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image pushed"
+            echo ""
+            echo '```'
+            echo "${CUSTOM_IMAGE}:${CUSTOM_TAG}"
+            echo '```'
+            echo ""
+            echo "Deploy with: \`ansible-playbook infra/ansible/site.yml --tags deploy --ask-vault-pass\`"
+          } >> "$GITHUB_STEP_SUMMARY"

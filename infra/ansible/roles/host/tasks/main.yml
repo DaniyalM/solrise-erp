@@ -1,0 +1,162 @@
+---
+# =============================================================================
+# Host preparation - the Ansible equivalent of scripts/bootstrap-vps.sh, plus
+# the AWS-specific touches (instance-profile tooling, IMDS-friendly defaults).
+# Idempotent: safe to re-run.
+# =============================================================================
+
+- name: Update the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - git
+      - jq
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - uidmap
+      - slirp4netns
+      - fuse-overlayfs
+      - podman
+      - podman-compose
+      - python3
+      - unzip
+      - tar
+    state: present
+
+- name: Install awscli (needed for ECR login and/or the S3 backup sync)
+  ansible.builtin.apt:
+    name: awscli
+    state: present
+  when: >-
+    (backup_s3_enabled | default(false) | bool)
+    or ((ecr_repository_url | default('')) | length > 0)
+
+- name: Set the system timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+# --- swap --------------------------------------------------------------------
+# MariaDB on RDS moved off-box, but the image build still spikes memory.
+- name: Check for an existing swapfile
+  ansible.builtin.stat:
+    path: /swapfile
+  register: swapfile
+
+- name: Create the swapfile
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ swap_size_mb }}M /swapfile"
+    creates: /swapfile
+
+- name: Persist swap in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+
+- name: Set swapfile permissions
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Format the swapfile
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  when: swapfile is not changed
+  register: mkswap_result
+  changed_when: mkswap_result.rc == 0
+
+- name: Activate the swapfile
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  register: swapon_result
+  changed_when: swapon_result.rc == 0
+  failed_when: false
+
+# --- kernel tuning -----------------------------------------------------------
+- name: Apply the sysctl values Redis, Traefik and rootless Podman need
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-solrise.conf
+    state: present
+    reload: true
+  loop:
+    - { name: net.ipv4.ip_unprivileged_port_start, value: "80" }
+    - { name: vm.overcommit_memory, value: "1" }
+    - { name: vm.swappiness, value: "10" }
+    - { name: net.core.somaxconn, value: "1024" }
+    - { name: net.ipv4.tcp_keepalive_time, value: "600" }
+    - { name: fs.inotify.max_user_instances, value: "1024" }
+
+# --- firewall (defence in depth; the security group is the primary control) --
+- name: Firewall - allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Firewall - allow HTTP and HTTPS
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: ["80", "443"]
+
+- name: Firewall - enable
+  community.general.ufw:
+    state: enabled
+    policy: deny
+
+# --- rootless podman ---------------------------------------------------------
+- name: Check the subordinate UID mapping
+  ansible.builtin.command: "grep -q '^{{ deploy_user }}:' /etc/subuid"
+  register: subuid_check
+  changed_when: false
+  failed_when: false
+
+- name: Add subordinate UID/GID ranges
+  ansible.builtin.command: >-
+    usermod --add-subuids 100000-165535 --add-subgids 100000-165535 {{ deploy_user }}
+  when: subuid_check.rc != 0
+  register: subuid_add
+
+- name: Enable systemd lingering for the deploy user
+  ansible.builtin.command: "loginctl enable-linger {{ deploy_user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ deploy_user }}"
+  changed_when: false
+
+- name: Enable the rootless podman socket (used by Traefik to discover containers)
+  ansible.builtin.systemd_service:
+    name: podman.socket
+    enabled: true
+    state: started
+    scope: user
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ deploy_uid }}/bus"
+  register: podman_socket
+  until: podman_socket is succeeded
+  retries: 5
+  delay: 3
+
+- name: Rebuild podman storage to pick up the new subordinate ranges
+  ansible.builtin.command: podman system migrate
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  when: subuid_add is changed
+  changed_when: true
