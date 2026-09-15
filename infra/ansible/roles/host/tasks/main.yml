@@ -27,10 +27,26 @@
       - podman
       - podman-compose
       - make
+      - pipx
       - python3
       - unzip
       - tar
     state: present
+
+# The apt `podman-compose` (1.0.6) predates `--profile` and several compose
+# interpolation forms this repo relies on. Install a current release via pipx
+# and point the deploy at that binary (COMPOSE_CMD in env.j2).
+- name: Install a current podman-compose via pipx for the deploy user
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command:
+    cmd: pipx install podman-compose
+  environment:
+    HOME: "{{ deploy_home }}"
+    PATH: "{{ deploy_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+  register: pipx_install
+  changed_when: "'installed package podman-compose' in pipx_install.stdout"
+  failed_when: false
 
 - name: Install awscli (needed for ECR login and/or the S3 backup sync)
   ansible.builtin.apt:
