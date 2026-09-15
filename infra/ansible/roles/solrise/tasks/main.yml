@@ -21,10 +21,13 @@
     rds_secret: "{{ lookup('amazon.aws.secretsmanager_secret', db_secret_arn, region=aws_region) | from_json }}"
   no_log: true
 
-- name: Choose the image source (ECR when enabled, otherwise build locally)
+- name: Choose the image source (ECR or Docker Hub when set, otherwise build locally)
   ansible.builtin.set_fact:
+    # `pull_image` is true when the image comes from any registry (ECR or Docker
+    # Hub). When false, the fallback is to build on the host via `make image`.
+    pull_image: "{{ (ecr_repository_url | default('') | length > 0) or (custom_image | default('') is match('^docker.io/')) }}"
     effective_image: "{{ ecr_repository_url if (ecr_repository_url | default('') | length > 0) else custom_image }}"
-    effective_pull_policy: "{{ 'always' if (ecr_repository_url | default('') | length > 0) else 'missing' }}"
+    effective_pull_policy: "{{ 'always' if ((ecr_repository_url | default('') | length > 0) or (custom_image | default('') is match('^docker.io/'))) else 'missing' }}"
     effective_backup_dir: "{{ backup_dir | default('') if (backup_dir | default('') | length > 0) else app_dir + '/backups' }}"
 
 # RDS lives in a private subnet: only the app host can reach it, so probe from
@@ -98,7 +101,24 @@
   when: ecr_repository_url | default('') | length > 0
   changed_when: false
 
-- name: Pull the pre-built image from ECR
+- name: Log in to Docker Hub (only when the image is pulled from docker.io)
+  ansible.builtin.shell: >-
+    printf '%s\n' '{{ dockerhub_password }}' |
+    podman login --username '{{ dockerhub_username }}' --password-stdin docker.io
+  become: true
+  become_user: "{{ deploy_user }}"
+  environment:
+    HOME: "{{ deploy_home }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
+  when:
+    - ecr_repository_url | default('') | length == 0
+    - custom_image | default('') is match('^docker.io/')
+    - dockerhub_username is defined and dockerhub_username | length > 0
+    - dockerhub_password is defined and dockerhub_password | length > 0
+  no_log: true
+  changed_when: false
+
+- name: Pull the pre-built image from the registry
   ansible.builtin.command:
     cmd: "podman pull {{ effective_image }}:{{ custom_tag }}"
   become: true
@@ -106,7 +126,7 @@
   environment:
     HOME: "{{ deploy_home }}"
     XDG_RUNTIME_DIR: "/run/user/{{ deploy_uid }}"
-  when: ecr_repository_url | default('') | length > 0
+  when: pull_image | bool
   changed_when: true
 
 - name: Build the Solrise image (slow - bakes erpnext + hrms + the custom app)
@@ -122,7 +142,7 @@
   async: 5400
   poll: 30
   when:
-    - ecr_repository_url | default('') | length == 0
+    - not (pull_image | bool)
     - rebuild_image | bool
   changed_when: "'built' in image_build.stdout"
 

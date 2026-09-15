@@ -86,7 +86,7 @@ resource "local_file" "ansible_inventory" {
     host_name    = local.name
     public_ip    = aws_eip.main.public_ip
     ssh_user     = "ubuntu"
-    ssh_key_line = var.ssh_private_key_path != "" ? "\nansible_ssh_private_key_file=${var.ssh_private_key_path}" : ""
+    ssh_key_line = var.ssh_private_key_path != "" ? " ansible_ssh_private_key_file=${var.ssh_private_key_path}" : ""
   })
 }
 

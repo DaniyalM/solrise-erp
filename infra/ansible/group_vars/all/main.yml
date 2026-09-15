@@ -13,17 +13,17 @@ swap_size_mb: 4096
 
 # --- source ------------------------------------------------------------------
 # Point this at the repository holding THIS project (compose/, scripts/, Makefile).
-repo_url: "https://github.com/CHANGE-ME/solrise-app.git"
+repo_url: "https://github.com/DaniyalM/solrise-erp.git"
 repo_version: main
 
 # --- image -------------------------------------------------------------------
-custom_image: solrise/erpnext
+custom_image: docker.io/daniyalbphq/solrise
 custom_tag: version-15
 frappe_branch: version-15
 # The custom app baked in via apps.json (${SOLRISE_APP_URL}).
-solrise_app_url: "https://github.com/CHANGE-ME/solrise_erp"
-solrise_app_branch: version-15
-install_apps: "erpnext hrms"
+solrise_app_url: "https://github.com/DaniyalM/solrise_erp"
+solrise_app_branch: main
+install_apps: "erpnext,hrms"
 
 # Rebuild the image on the EC2 host itself. ECR is the primary source: the image
 # is built in GitHub Actions and pulled here, so this defaults to false.

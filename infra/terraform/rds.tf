@@ -17,50 +17,59 @@ resource "aws_db_parameter_group" "mariadb" {
   description = "Solrise ERP MariaDB settings (utf8mb4, Frappe-friendly)"
 
   parameter {
-    name  = "character_set_server"
-    value = "utf8mb4"
+    name         = "character_set_server"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "collation_server"
-    value = "utf8mb4_unicode_ci"
+    name         = "collation_server"
+    value        = "utf8mb4_unicode_ci"
+    apply_method = "pending-reboot"
   }
 
   # RDS equivalent of the container's --skip-character-set-client-handshake:
   # force utf8mb4 for clients that do not set the charset themselves.
   parameter {
-    name  = "character_set_client"
-    value = "utf8mb4"
+    name         = "character_set_client"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "character_set_connection"
-    value = "utf8mb4"
+    name         = "character_set_connection"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "character_set_results"
-    value = "utf8mb4"
+    name         = "character_set_results"
+    value        = "utf8mb4"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "max_allowed_packet"
-    value = "67108864" # 64 MB - the 16 MB default bites large imports
+    name         = "max_allowed_packet"
+    value        = "67108864" # 64 MB - the 16 MB default bites large imports
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "innodb_buffer_pool_size"
-    value = "{DBInstanceClassMemory*3/4}"
+    name         = "innodb_buffer_pool_size"
+    value        = "{DBInstanceClassMemory*3/4}"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "innodb_flush_log_at_trx_commit"
-    value = "2"
+    name         = "innodb_flush_log_at_trx_commit"
+    value        = "2"
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "skip_name_resolve"
-    value = "1"
+    name         = "skip_name_resolve"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   tags = { Name = "${local.name}-mariadb-pg" }

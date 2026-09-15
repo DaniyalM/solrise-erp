@@ -28,7 +28,7 @@ else
 fi
 
 log "running create-site (idempotent) ..."
-compose --profile init run --rm create-site
+compose run --rm create-site
 
 log "installed apps:"
 compose exec -T backend bench --site "${SITE_NAME}" list-apps

@@ -7,3 +7,8 @@
 
 # Frappe `Administrator` password, set at site creation.
 vault_admin_password: "change-me-to-something-long-and-random"
+
+# Docker Hub login (only needed when pulling a private image from docker.io).
+# Use a personal access token, NOT your Docker Hub account password.
+dockerhub_username: "daniyalbphq"
+dockerhub_password: "change-me"

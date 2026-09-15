@@ -17,7 +17,7 @@ resource "aws_security_group" "ec2" {
   }
 
   ingress {
-    description = "HTTP - Let's Encrypt HTTP-01 challenge + https redirect"
+    description = "HTTP - Lets Encrypt HTTP-01 challenge + https redirect"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
