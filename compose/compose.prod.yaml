@@ -20,9 +20,6 @@ x-backend: &backend
   restart: unless-stopped
   volumes:
     - sites:/home/frappe/frappe-bench/sites
-  depends_on:
-    configurator:
-      condition: service_completed_successfully
 
 services:
   # ---------------------------------------------------------------- database --
